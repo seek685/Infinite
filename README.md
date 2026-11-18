@@ -1,8 +1,12 @@
 # ORBITAL | Infinite Li
 
-个人网站正式入口：[infinite-li.cn](https://infinite-li.cn/)。后续公开版本沿用此域名，本目录保留开发源码。
+**[立即探索宇宙 · Explore the universe →](https://infinite-li.cn/)**
 
-## 项目介绍（中文）
+正式网站 / Official website：[https://infinite-li.cn](https://infinite-li.cn/)
+
+[中文介绍](#中文介绍) · [English introduction](#english-introduction) · [本地运行 / Run locally](#启动) · [技术实现 / Implementation](#实现)
+
+## 中文介绍
 
 全屏实时 WebGL 深空航行。参考 Active Theory 的连续空间叙事与克制字幕，以原创行星、星环、镜头和着色器实现；没有图片、SVG 插画、卡片或远程素材依赖。
 
@@ -10,7 +14,7 @@ ORBITAL / Infinite Li 将一次宇宙探索展开为八幕电影式旅程：从�
 
 项目基于 Vite、Three.js、GSAP 和 Lenis，结合程序化 GLSL 材质、后期泛光与深空粒子。支持自由环绕、三个空间探索锚点，以及由 Web Audio API 实时合成、默认静音的氛围音效；同时为桌面和移动端提供适配构图、触屏操作与减少动态效果支持。
 
-## Introduction (English)
+## English introduction
 
 A fullscreen, real-time WebGL journey through deep space. Inspired by Active Theory's continuous spatial storytelling and restrained typography, the experience uses original planets, rings, camera paths, and shaders, without image assets, SVG illustrations, cards, or remotely hosted media.
 
