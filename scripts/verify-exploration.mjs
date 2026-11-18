@@ -97,6 +97,22 @@ try{
       assert.ok(layout.top>layout.nav&&layout.bottom<layout.hud,'field record must clear both navigation and telemetry');assert.equal(layout.overflow,false);
       assert.ok(Math.hypot(...(await state()).cameraPosition)>=3.052-1e-6);
       await page.screenshot({path:`.qa/${name}-record-${id}.png`});records.push(id);
+      const articleLink=page.locator('#record-article');
+      const articleLabel=await articleLink.getAttribute('aria-label');
+      await articleLink.click();await page.waitForSelector('#reader[open] .prose p');
+      assert.ok(articleLabel.includes(await page.locator('#reader-title').textContent()));
+      assert.equal((await state()).exploration.controlsEnabled,false,'reading holds the close-up camera');
+      if(name==='mobile'){
+        await page.waitForTimeout(2200);
+        const held=await state();await page.waitForTimeout(350);
+        assert.equal((await state()).sceneTime,held.sceneTime,'a held surface landmark stays aligned throughout a long read');
+        assert.deepEqual((await state()).cameraPosition,held.cameraPosition);
+      }
+      await page.keyboard.press('Escape');
+      await page.waitForFunction(()=>!document.querySelector('#reader').open);
+      assert.equal((await state()).exploration.selected,id,'Escape closes the article before the underlying field record');
+      assert.equal((await state()).exploration.controlsEnabled,true);
+      assert.equal(await page.evaluate(()=>document.activeElement.id),'record-article');
       await page.locator('#record-close').click();await waitMode('orbit');
       assert.equal((await state()).exploration.selected,null);
       await page.locator('#orbit-button').click();await waitMode('flight');await page.waitForTimeout(300);

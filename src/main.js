@@ -6,6 +6,7 @@ import { Vector2, Vector3, MathUtils, PerspectiveCamera } from 'three';
 import { createUniverse } from './universe.js';
 import { applyGasCamera } from './scene/camera.js';
 import { preloader } from './ui/preloader.js';
+import { createReader } from './ui/reader.js';
 import { readTelemetry, dampWarp, KM_PER_UNIT, MISSION_TIME_SCALE } from './immersion-math.js';
 import { createExploration } from './exploration.js';
 import { createSpaceAudio } from './space-audio.js';
@@ -38,6 +39,7 @@ const previousCamera=new Vector3();
 const altitudeReadout=document.querySelector('#altitude-value'),velocityReadout=document.querySelector('#velocity-value'),temperatureReadout=document.querySelector('#temperature-value');
 let previousProgress=0,cameraSampled=false,velocity=0,warpStrength=0,telemetry={},lastTelemetryPaint=0;
 let exploration,frozenProgress=0;
+let reading=false, rotationRate=1, lastReadingPaint=0, refreshOnResume=false;
 const orbitButton=document.querySelector('#orbit-button');
 
 function fail(error){
@@ -68,7 +70,7 @@ function travelTo(progress){
 document.querySelectorAll('[data-stop]').forEach(button=>button.addEventListener('click',()=>travelTo(Number(button.dataset.stop)/(CHAPTER_COUNT-1))));
 restart.addEventListener('click',()=>travelTo(0));
 window.addEventListener('pointermove',event=>{
-  if(!finePointer.matches||reducedMotion.matches||exploration?.active)return;
+  if(reading||!finePointer.matches||reducedMotion.matches||exploration?.active)return;
   pointer.set(event.clientX/innerWidth-.5,event.clientY/innerHeight-.5);
 },{passive:true});
 document.addEventListener('pointerleave',()=>pointer.set(0,0));
@@ -79,18 +81,40 @@ function configureScroll(){
   lenis?.on('scroll',ScrollTrigger.update);
   trigger=gsap.fromTo(flight,{progress:0},{progress:1,ease:'none',scrollTrigger:{trigger:'.flight-scroll',start:'top top',end:'bottom bottom',scrub:reducedMotion.matches?true:1.8,invalidateOnRefresh:true}}).scrollTrigger;
   ScrollTrigger.refresh();
+  if(reading){
+    trigger.disable(false);lenis?.stop();
+    trigger.animation.progress(frozenProgress);flight.progress=frozenProgress;
+  }
 }
-reducedMotion.addEventListener('change',()=>{paused=reducedMotion.matches;pointer.set(0,0);if(exploration?.active)exploration.exit(configureScroll);else configureScroll();});
+reducedMotion.addEventListener('change',()=>{paused=reducedMotion.matches;pointer.set(0,0);renderDirty=true;if(!reading&&exploration?.active)exploration.exit(configureScroll);else configureScroll();});
 
-function lockFlight(){
+function lockFlight(resetPointer=true){
   frozenProgress=flight.progress;trigger?.disable(false);lenis?.stop();
-  pointer.set(0,0);dampedPointer.set(0,0);renderDirty=true;
+  if(resetPointer){pointer.set(0,0);dampedPointer.set(0,0);}
+  renderDirty=true;
 }
 function resumeFlight(){
   const y=frozenProgress*(document.documentElement.scrollHeight-innerHeight);
+  lenis?.start();
   if(lenis)lenis.scrollTo(y,{immediate:true,force:true});else window.scrollTo(0,y);
+  // A paused scrub can still have an old destination if the reader opened mid-flight.
+  const scrub=trigger?.getTween();
+  if(scrub)scrub.resetTo('totalProgress',frozenProgress,frozenProgress).pause();
   flight.progress=frozenProgress;trigger?.animation.progress(frozenProgress);trigger?.enable(false,false);
-  lenis?.start();ScrollTrigger.update();previousProgress=flight.progress;renderDirty=true;
+  if(refreshOnResume){trigger?.refresh();refreshOnResume=false;}
+  ScrollTrigger.update();previousProgress=flight.progress;renderDirty=true;
+}
+function setReading(open){
+  reading=open;
+  if(!exploration)return;
+  exploration.setSuspended(open);
+  if(open){
+    if(!exploration.active)lockFlight(false);
+    lastReadingPaint=performance.now();
+  }else{
+    if(!exploration.active)resumeFlight();
+    lastTime=performance.now();cameraSampled=false;renderDirty=true;
+  }
 }
 function applyFlightCamera(camera){
   if(flight.progress<=GAS_END)applyGasCamera(camera,gasProgress(flight.progress),dampedPointer,reducedMotion.matches);
@@ -102,6 +126,23 @@ function applyFlightCamera(camera){
 
 function draw(timestamp){
   const delta=Math.min((timestamp-lastTime)/1000||.016,.05);lastTime=timestamp;
+  if(reading){
+    const interval=1000/(innerWidth<768?8:12);
+    const sincePaint=timestamp-lastReadingPaint;
+    const animateBackground=!paused&&(!exploration.active||rotationRate>0);
+    if(renderDirty||(animateBackground&&sincePaint>=interval)){
+      const step=Math.min(Math.max(0,sincePaint)/1000,.25);
+      // Settle a held observation to rest so a long article cannot move the landmark away.
+      rotationRate=MathUtils.damp(rotationRate,exploration.active?0:.12,4,step);
+      if(exploration.active&&rotationRate<.005)rotationRate=0;
+      if(!paused)elapsed+=step*rotationRate;
+      warpStrength=dampWarp(warpStrength,0,step,paused);
+      universe.render(elapsed,step,warpStrength,flight.progress);
+      spaceAudio.update(0,universe.camera.position,elapsed);
+      lastReadingPaint=timestamp;renderDirty=false;
+    }
+    raf=requestAnimationFrame(draw);return;
+  }
   lenis?.raf(timestamp);
   const damping=1-Math.exp(-delta*2.8);
   dampedPointer.lerp(pointer,damping);
@@ -125,7 +166,7 @@ function draw(timestamp){
     velocityReadout.textContent=telemetry.velocity.toFixed(1);temperatureReadout.textContent=telemetry.temperature.toFixed(1);
     lastTelemetryPaint=timestamp;
   }
-  if(!paused)elapsed+=delta;
+  if(!paused){rotationRate=MathUtils.damp(rotationRate,1,4,delta);elapsed+=delta*rotationRate;}
   if(!paused||exploration.active||renderDirty||Math.abs(renderedProgress-flight.progress)>1e-6||renderedPointer.distanceToSquared(dampedPointer)>1e-7){
     universe.render(elapsed,delta,warpStrength,flight.progress);updateHUD(flight.progress);
     renderedProgress=flight.progress;renderedPointer.copy(dampedPointer);renderDirty=false;
@@ -140,16 +181,24 @@ document.addEventListener('visibilitychange',()=>{
   if(!document.hidden&&universe){lastTime=performance.now();cameraSampled=false;raf=requestAnimationFrame(draw);}
 });
 window.addEventListener('resize',()=>{
-  clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{universe?.resize();renderDirty=true;ScrollTrigger.refresh();},160);
+  clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{
+    universe?.resize();renderDirty=true;
+    if(reading){
+      refreshOnResume=true;
+      if(universe&&!exploration?.active)applyFlightCamera(universe.camera);
+    }else ScrollTrigger.refresh();
+  },160);
 },{passive:true});
 canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();cancelAnimationFrame(raf);document.querySelector('.failure').hidden=false;document.querySelector('#failure-message').textContent='图形上下文已中断，请重新载入以恢复航行。';});
 
+const reader=createReader(setReading);
 try{
   universe=await createUniverse(canvas,preloader.advance);
   configureScroll();
   applyFlightCamera(universe.camera);
   exploration=createExploration({camera:universe.camera,canvas,anchors:universe.anchors,reducedMotion,lockFlight,resumeFlight,routePose:applyFlightCamera,
     orbitContext:()=>journeyState(flight.progress).offset>=1.88?{center:BLACK_HOLE_CENTER,minDistance:11,maxDistance:140}:null});
+  if(reading)setReading(true);
   universe.render(0,0);
   if(universe.diagnostics().shaderErrors.length)throw new Error('着色器编译失败');
   preloader.advance(92);
@@ -158,10 +207,10 @@ try{
   await preloader.complete();
   if(import.meta.env.DEV){
     window.__ORBITAL__={
-      diagnostics:()=>({...universe.diagnostics(),preloader:preloader.diagnostics(),telemetry,exploration:exploration.diagnostics(),audio:spaceAudio.diagnostics(),progress:flight.progress,gasProgress:gasProgress(flight.progress),cameraPosition:universe.camera.position.toArray(),cameraFov:universe.camera.fov,cameraView:{...universe.camera.view},frameAverage,paused,caption:activeChapter,scrollHeight:document.documentElement.scrollHeight,viewportHeight:innerHeight}),
+      diagnostics:()=>({...universe.diagnostics(),preloader:preloader.diagnostics(),telemetry,exploration:exploration.diagnostics(),audio:spaceAudio.diagnostics(),progress:flight.progress,gasProgress:gasProgress(flight.progress),cameraPosition:universe.camera.position.toArray(),cameraFov:universe.camera.fov,cameraView:{...universe.camera.view},frameAverage,paused,reading,sceneTime:elapsed,caption:activeChapter,scrollHeight:document.documentElement.scrollHeight,viewportHeight:innerHeight}),
       seek:progress=>{lenis?.scrollTo(progress*(document.documentElement.scrollHeight-innerHeight),{immediate:true});if(!lenis)window.scrollTo(0,progress*(document.documentElement.scrollHeight-innerHeight));},
     };
   }
 }catch(error){fail(error);}
 
-if(import.meta.hot)import.meta.hot.dispose(()=>{cancelAnimationFrame(raf);lenis?.destroy();trigger?.kill();exploration?.dispose();spaceAudio.dispose();universe?.dispose();});
+if(import.meta.hot)import.meta.hot.dispose(()=>{cancelAnimationFrame(raf);reader.dispose();lenis?.destroy();trigger?.kill();exploration?.dispose();spaceAudio.dispose();universe?.dispose();});

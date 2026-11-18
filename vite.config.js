@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   optimizeDeps: {
-    include: ['three','gsap','gsap/ScrollTrigger','lenis','three/addons/postprocessing/EffectComposer.js','three/addons/postprocessing/RenderPass.js','three/addons/postprocessing/UnrealBloomPass.js','three/addons/postprocessing/OutputPass.js','three/addons/postprocessing/ShaderPass.js','three/addons/controls/OrbitControls.js'],
+    include: ['three','gsap','gsap/ScrollTrigger','lenis','marked','dompurify','three/addons/postprocessing/EffectComposer.js','three/addons/postprocessing/RenderPass.js','three/addons/postprocessing/UnrealBloomPass.js','three/addons/postprocessing/OutputPass.js','three/addons/postprocessing/ShaderPass.js','three/addons/controls/OrbitControls.js'],
   },
   build: {
     rolldownOptions: {

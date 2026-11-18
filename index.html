@@ -4,14 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#030509" />
-    <meta name="description" content="Infinite Li 的个人宇宙。穿过星环、风暴与日食，跃迁至黑洞，在八幕实时三维航行中探索无限。" />
+    <meta name="description" content="Infinite Li 的个人宇宙。从八幕深空航行走进风暴与星环，阅读图形、声音与工程日志，探索个人造物。" />
     <link rel="canonical" href="https://infinite-li.cn/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Infinite Li" />
     <meta property="og:locale" content="zh_CN" />
     <meta property="og:url" content="https://infinite-li.cn/" />
     <meta property="og:title" content="ORBITAL | Infinite Li" />
-    <meta property="og:description" content="Infinite Li 的个人宇宙。穿过星环、风暴与日食，跃迁至黑洞，在八幕实时三维航行中探索无限。" />
+    <meta property="og:description" content="Infinite Li 的个人宇宙。从八幕深空航行走进风暴与星环，阅读图形、声音与工程日志，探索个人造物。" />
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'%3E%3Crect width='36' height='36' rx='8' fill='%23030509'/%3E%3Cg fill='none' stroke='%23dce6e1' stroke-width='1'%3E%3Ccircle cx='18' cy='18' r='9'/%3E%3Cellipse cx='18' cy='18' rx='16' ry='6' transform='rotate(-43 18 18)'/%3E%3C/g%3E%3C/svg%3E" />
     <title>ORBITAL | Infinite Li</title>
     <style>
@@ -29,7 +29,14 @@
   <body>
     <canvas id="universe" aria-label="实时三维宇宙：气态巨行星、粒子星环与深空恒星"></canvas>
     <header class="navigation">
-      <button class="orbit-symbol" data-stop="0" aria-label="返回深空起点"><span></span><i></i></button>
+      <div class="navigation-start">
+        <button class="orbit-symbol" data-stop="0" aria-label="返回深空起点"><span></span><i></i></button>
+        <nav class="site-navigation" aria-label="个人主页">
+          <a class="text-control" href="#journal" aria-label="JOURNAL / 日志" aria-haspopup="dialog">JOURNAL<span> / 日志</span></a>
+          <a class="text-control" href="#projects" aria-label="PROJECTS / 造物" aria-haspopup="dialog">PROJECTS<span> / 造物</span></a>
+          <a class="text-control" href="#about" aria-label="ABOUT / 关于" aria-haspopup="dialog">ABOUT<span> / 关于</span></a>
+        </nav>
+      </div>
       <nav class="flight-navigation" aria-label="选择航行章节">
         <div class="flight-line"><span id="flight-progress"></span></div>
         <button data-stop="0" aria-label="第一章：远方" aria-current="step"></button>
@@ -67,7 +74,7 @@
       <p class="record-kicker" id="record-kicker"></p>
       <h2 id="record-title"></h2>
       <p class="record-copy" id="record-copy"></p>
-      <span class="record-footnote">ORBITAL OBSERVATORY · 模拟考察</span>
+      <div class="record-bottom"><span class="record-footnote">ORBITAL OBSERVATORY · 模拟考察</span><a id="record-article" hidden>阅读日志 <span aria-hidden="true">↗</span></a></div>
     </aside>
     <p class="orbit-guidance" aria-live="polite"><span>FREE ORBIT</span><span class="orbit-instructions">拖拽环绕 · 滚轮缩放 · 点击光标探索</span></p>
     <dl class="flight-readouts" aria-label="模拟航行遥测">
@@ -87,6 +94,50 @@
       <section class="flight-chapter" aria-label="第八章：远眺黑洞，回归星海"></section>
     </main>
     <div class="failure" role="alert" hidden><p>暂时无法开启这段航行。</p><span id="failure-message">请开启浏览器的硬件加速后重新载入。</span><button onclick="location.reload()">重新载入 ↗</button></div>
+    <dialog id="reader" aria-labelledby="reader-title" data-lenis-prevent>
+      <header class="reader-toolbar">
+        <nav aria-label="阅读面板栏目">
+          <a href="#journal" aria-label="JOURNAL / 日志">JOURNAL</a>
+          <a href="#projects" aria-label="PROJECTS / 造物">PROJECTS</a>
+          <a href="#about" aria-label="ABOUT / 关于">ABOUT</a>
+        </nav>
+        <button type="button" id="reader-close" aria-label="关闭阅读面板"><span aria-hidden="true"></span></button>
+      </header>
+      <div id="reader-scroll" data-lenis-prevent tabindex="0"><div id="reader-page"></div></div>
+    </dialog>
+    <template id="projects-view">
+      <h2 class="reader-title" id="reader-title" tabindex="-1">造物</h2>
+      <div class="project-grid">
+        <a class="project-card project-feature" href="https://github.com/seek685/Infinite" target="_blank" rel="noopener noreferrer">
+          <img class="project-orbit" src="/src/media/orbital-project.webp" alt="" width="640" height="400" loading="lazy" />
+          <div class="project-info">
+            <span class="reader-meta">WebGL · Three.js</span><h3>ORBITAL</h3>
+            <p>八幕可驾驶的深空航线。从风暴巨眼飞到黑洞，光与声音都由代码实时生成。</p>
+            <span class="project-action">查看源码 ↗</span>
+          </div>
+        </a>
+        <a class="project-card" href="https://seek685.github.io/Soc_riscv32_demo/" target="_blank" rel="noopener noreferrer">
+          <span class="reader-meta">卷积网络 · 交互可视化</span><h3>CNN Explainer</h3>
+          <p>点开一格特征图，看输入像素如何经过乘加、量化，最后变成候选框。</p>
+          <span class="project-action">打开实验 ↗</span>
+        </a>
+        <a class="project-card" href="https://github.com/seek685/DiskReview" target="_blank" rel="noopener noreferrer">
+          <span class="reader-meta">Python · Windows</span><h3>DiskReview</h3>
+          <p>让磁盘占用有迹可循。在本机审阅缓存、重复文件和空间变化，再决定如何整理。</p>
+          <span class="project-action">查看源码 ↗</span>
+        </a>
+      </div>
+    </template>
+    <template id="about-view">
+      <h2 class="reader-title" id="reader-title" tabindex="-1">Infinite Li<span class="author-period">.</span></h2>
+      <div class="about-copy">
+        <p class="about-lead">你好，我是 Infinite Li。这里是我的个人主页，也是我放置作品和实验笔记的地方。</p>
+        <p>我喜欢把藏在程序里的过程做成可以亲手操作的东西。绕到星球背面能看见环缝里的光，点开特征图的一格能追到一次乘加。日志留给这些细节，造物里可以直接体验它们。</p>
+        <h3>联系</h3>
+        <p>想交流某篇日志、反馈网站体验，或聊聊实现细节，可以在项目的 GitHub Issues 公开留言。</p>
+        <div class="contact-links"><a href="https://github.com/seek685/Infinite/issues" target="_blank" rel="noopener noreferrer">项目留言 ↗</a><a href="https://github.com/seek685" target="_blank" rel="noopener noreferrer">GitHub / seek685 ↗</a></div>
+      </div>
+    </template>
     <script type="module" src="/src/bootstrap.js"></script>
   </body>
 </html>

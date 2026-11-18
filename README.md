@@ -8,7 +8,7 @@
 
 ## 中文介绍
 
-全屏实时 WebGL 深空航行。参考 Active Theory 的连续空间叙事与克制字幕，以原创行星、星环、镜头和着色器实现；没有图片、SVG 插画、卡片或远程素材依赖。
+ORBITAL 有两个空间。航行层参考 Active Theory 的连续空间叙事与克制字幕，行星、星环与深空背景由本地 WebGL 实时生成。阅读层收录个人日志、造物与联系方式，也可以从天体标点的考察记录进入相关文章。
 
 ORBITAL / Infinite Li 将一次宇宙探索展开为八幕电影式旅程：从远眺气态巨行星出发，穿行粒子星环，掠过发光的大气层，见证日食，再通过超光速跃迁抵达黑洞与炽热吸积盘。滚动直接驱动三维摄像机，极简界面为宇宙景观留出充分空间。
 
@@ -16,7 +16,7 @@ ORBITAL / Infinite Li 将一次宇宙探索展开为八幕电影式旅程：从�
 
 ## English introduction
 
-A fullscreen, real-time WebGL journey through deep space. Inspired by Active Theory's continuous spatial storytelling and restrained typography, the experience uses original planets, rings, camera paths, and shaders, without image assets, SVG illustrations, cards, or remotely hosted media.
+ORBITAL combines a fullscreen WebGL journey with a personal journal. The flight draws its planets, rings and star fields procedurally, with continuous camera movement and restrained typography inspired by Active Theory. A separate reading panel holds Markdown articles, projects and contact links. Field notes on the planet and its rings open the corresponding articles.
 
 ORBITAL / Infinite Li unfolds across eight cinematic chapters: approach a gas giant, fly through its particle rings, skim a glowing atmosphere, witness an eclipse, and make a faster-than-light jump to a black hole and its blazing accretion disk. Scrolling drives the camera through a three-dimensional universe, while a minimal interface leaves room for the scenery.
 
@@ -34,6 +34,32 @@ npm run dev
 访问 **http://127.0.0.1:5173/**。使用鼠标滚轮、触屏滑动、Page Down 或顶部八个航行节点探索。右上角 FREE ORBIT 进入自由漫游，SOUND 开启或关闭声音，最后一章可重新启航。请通过开发服务器访问，不使用 `file://`。
 
 ## 实现
+
+### 日志、造物与关于
+
+顶部的 JOURNAL 打开日志目录。可以按分类筛选，或从风暴巨眼、卡西尼环缝、极光电离层的考察记录直接读文章。PROJECTS 和 ABOUT 共用这个阅读面板。Esc 或右上角的关闭按钮返回进入前的机位。
+
+在 `src/posts/` 新建 UTF-8 编码的 `.md` 文件即可进入目录，文件名也是可分享地址的一部分，例如 `/#journal/weather-in-two-clocks`。开发模式下 Vite 自动发现新文件。公网发布时重新运行 `npm run build`，部署新的 `dist/`。
+
+```markdown
+---
+title: 给星环留一道空隙
+date: 2026-11-15
+category: 构造实验
+summary: 让模型中的一道环缝，成为镜头可以穿过的一段路。
+anchor: division
+---
+
+## 观测
+
+在这里写正文。
+```
+
+头部支持平面文本字段、引号、注释，以及用 `>` 或 `|` 缩进书写的多行摘要。日期使用 `YYYY-MM-DD`。普通文章可省略 `anchor`。精选文章使用 `storm`、`division`、`ionosphere`，同一标点展示日期最新的一篇。目录按日期倒序排列，分类从文章自动生成。正文使用 Marked 和 DOMPurify，在浏览器内完成渲染。
+
+`src/content/` 负责文章解析，`src/ui/reader.js` 和 `reader.css` 负责阅读面板。个人项目及公开联系方式可在 `index.html` 的 `projects-view` 和 `about-view` 模板中编辑。
+
+### 三维航行
 
 - Vite + Three.js + GSAP ScrollTrigger + Lenis，依赖版本由 `package-lock.json` 固定。
 - 页面总高度 800vh，`scrub: 1.8` 驱动八幕航行。前五幕继续使用原有的球面坐标路径，实际滚动距离与镜头映射保持一致；后三幕接续超光速跃迁、黑洞近观与最终远眺。
@@ -58,11 +84,12 @@ npm run build
 npm run verify:browser
 npm run verify:exploration
 npm run verify:delivery
+npm run verify:reader
 ```
 
 浏览器验证使用本机 Chrome / Edge；其他路径可通过 `BROWSER_PATH` 指定。检查桌面、320 / 390 / 767 像素竖屏、手机横屏和减少动态效果模式的 48 个镜头，包括 GLSL 链接状态、WebGL 错误、控制台、资源请求、导航按钮、鼠标视差、滚动与字幕边界。报告及截图保存在 `.qa/`。
 
-`verify:delivery` 阻塞脚本请求验证首屏遮罩，再检查实际 WebGL 绘制先于遮罩淡出、进度单调递增、标题和分享信息、原生触屏滑动及横竖屏切换。它也支持通过 `PREVIEW_URL` 检查生产预览；其余两个浏览器脚本使用开发模式诊断接口。
+`verify:delivery` 检查首屏遮罩、WebGL 首帧、分享信息、原生触屏滑动及横竖屏切换。`verify:reader` 检查分类、文章直达、阅读滚动隔离、项目缩略图与航线恢复。这两项均支持通过 `PREVIEW_URL` 检查生产预览。`verify:browser` 与 `verify:exploration` 使用开发模式诊断接口。
 
 `npm run preview` 可在 http://127.0.0.1:4173/ 预览生产构建。
 

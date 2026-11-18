@@ -2,6 +2,7 @@ import { MathUtils, PerspectiveCamera, Vector3 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import gsap from 'gsap';
 import { safeArc, planetOccludes, MIN_ORBIT_RADIUS } from './exploration-math.js';
+import { postForAnchor, postHref } from './content/journal.js';
 
 const observations=[
   {id:'storm',label:'STORM EYE',title:'风暴巨眼',parent:'planet',point:[.34,.13,.94],radius:2.84,
@@ -15,6 +16,7 @@ const observations=[
 export function createExploration({camera,canvas,anchors,reducedMotion,lockFlight,resumeFlight,routePose,orbitContext=()=>null}){
   const button=document.querySelector('#orbit-button'),layer=document.querySelector('#hotspots');
   const record=document.querySelector('#field-record'),closeButton=document.querySelector('#record-close');
+  const articleLink=record.querySelector('#record-article');
   const caption=document.querySelector('.film-caption'),navigation=document.querySelector('.flight-navigation');
   const scratchCamera=new PerspectiveCamera(),projected=new Vector3(),direction=new Vector3(),normal=new Vector3(),tangent=new Vector3();
   const target=new Vector3();
@@ -58,6 +60,12 @@ export function createExploration({camera,canvas,anchors,reducedMotion,lockFligh
     document.querySelector('#record-kicker').textContent=pin.label;
     document.querySelector('#record-title').textContent=pin.title;
     document.querySelector('#record-copy').textContent=pin.copy;
+    const post=postForAnchor(pin.id);
+    articleLink.hidden=!post;
+    if(post){
+      articleLink.href=postHref(post);
+      articleLink.setAttribute('aria-label',`阅读日志《${post.title}》`);
+    }else articleLink.removeAttribute('href');
     record.classList.add('is-open');record.setAttribute('aria-hidden','false');record.inert=false;
     document.body.classList.add('record-open');closeButton.focus({preventScroll:true});
   }
@@ -167,6 +175,10 @@ export function createExploration({camera,canvas,anchors,reducedMotion,lockFligh
     }
   }
   function diagnostics(){return {mode,selected:selected?.id||null,controlsEnabled:controls?.enabled||false,transition:!!transition,target:controls?.target.toArray()||[0,0,0],hotspots:pins.map(pin=>({id:pin.id,visible:pin.visible,position:pin.world.toArray()}))};}
+  function setSuspended(suspended){
+    transition?.tween.paused(suspended);
+    if(controls&&mode==='orbit')controls.enabled=!suspended;
+  }
   function dispose(){transition?.tween.kill();controls?.dispose();pins.forEach(pin=>pin.element.remove());button.removeEventListener('click',toggle);closeButton.removeEventListener('click',closeRecord);document.removeEventListener('keydown',keydown);}
-  return {get active(){return mode!=='flight';},update,projectHotspots,exit,diagnostics,dispose};
+  return {get active(){return mode!=='flight';},update,projectHotspots,exit,setSuspended,diagnostics,dispose};
 }
