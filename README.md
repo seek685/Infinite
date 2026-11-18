@@ -2,7 +2,21 @@
 
 个人网站正式入口：[infinite-li.cn](https://infinite-li.cn/)。后续公开版本沿用此域名，本目录保留开发源码。
 
+## 项目介绍（中文）
+
 全屏实时 WebGL 深空航行。参考 Active Theory 的连续空间叙事与克制字幕，以原创行星、星环、镜头和着色器实现；没有图片、SVG 插画、卡片或远程素材依赖。
+
+ORBITAL / Infinite Li 将一次宇宙探索展开为八幕电影式旅程：从远眺气态巨行星出发，穿行粒子星环，掠过发光的大气层，见证日食，再通过超光速跃迁抵达黑洞与炽热吸积盘。滚动直接驱动三维摄像机，极简界面为宇宙景观留出充分空间。
+
+项目基于 Vite、Three.js、GSAP 和 Lenis，结合程序化 GLSL 材质、后期泛光与深空粒子。支持自由环绕、三个空间探索锚点，以及由 Web Audio API 实时合成、默认静音的氛围音效；同时为桌面和移动端提供适配构图、触屏操作与减少动态效果支持。
+
+## Introduction (English)
+
+A fullscreen, real-time WebGL journey through deep space. Inspired by Active Theory's continuous spatial storytelling and restrained typography, the experience uses original planets, rings, camera paths, and shaders, without image assets, SVG illustrations, cards, or remotely hosted media.
+
+ORBITAL / Infinite Li unfolds across eight cinematic chapters: approach a gas giant, fly through its particle rings, skim a glowing atmosphere, witness an eclipse, and make a faster-than-light jump to a black hole and its blazing accretion disk. Scrolling drives the camera through a three-dimensional universe, while a minimal interface leaves room for the scenery.
+
+Built with Vite, Three.js, GSAP, and Lenis, the project combines procedural GLSL materials, bloom post-processing, and deep-space particles. Explore with free orbit controls and three spatial hotspots, or enable ambient sound synthesized in real time with the Web Audio API; audio is muted by default. Desktop and mobile layouts include tailored camera framing, touch controls, and support for reduced motion preferences.
 
 ## 启动
 
