@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#030509" />
+    <meta name="description" content="ORBITAL — 一段穿过星环、风暴与日食的实时三维深空航行。" />
+    <link rel="icon" href="data:," />
+    <title>ORBITAL — A passage through the infinite</title>
+  </head>
+  <body>
+    <canvas id="universe" aria-label="实时三维宇宙：气态巨行星、粒子星环与深空恒星"></canvas>
+    <header class="navigation">
+      <button class="orbit-symbol" data-stop="0" aria-label="返回深空起点"><span></span><i></i></button>
+      <nav class="flight-navigation" aria-label="选择航行章节">
+        <div class="flight-line"><span id="flight-progress"></span></div>
+        <button data-stop="0" aria-label="第一章：远方" aria-current="step"></button>
+        <button data-stop="1" aria-label="第二章：穿过星环"></button>
+        <button data-stop="2" aria-label="第三章：风暴地平线"></button>
+        <button data-stop="3" aria-label="第四章：寂静日食"></button>
+        <button data-stop="4" aria-label="第五章：归于无限"></button>
+        <button data-stop="5" aria-label="第六章：超光速跃迁"></button>
+        <button data-stop="6" aria-label="第七章：黑洞奇点"></button>
+        <button data-stop="7" aria-label="第八章：最后的地平线"></button>
+      </nav>
+      <div class="navigation-actions">
+        <button id="orbit-button" class="text-control" aria-label="自由漫游：拖拽环绕，滚轮缩放" aria-pressed="false">FREE ORBIT</button>
+        <button id="sound-button" class="text-control sound-button" aria-label="开启空间音效" aria-pressed="false"><span class="sound-wave" aria-hidden="true"><i></i><i></i><i></i></span>SOUND</button>
+      </div>
+    </header>
+    <div class="loading" role="status"><span class="loading-orbit"></span><span id="loading-label">ALIGNING ORBITS</span></div>
+    <aside class="film-caption" aria-label="当前航行章节">
+      <div class="caption-meta"><span id="chapter-number">01 / 08</span><span id="chapter-kicker">THE APPROACH</span></div>
+      <h1 id="chapter-title">Touch<br>the infinite.</h1>
+      <p class="caption-zh" id="chapter-subtitle">向未知，靠近一点。</p>
+      <p class="caption-note" id="chapter-note">在光抵达之前，<br>让好奇心先行。</p>
+      <button id="restart" hidden>再次启航 <span aria-hidden="true">↗</span></button>
+    </aside>
+    <div id="hotspots" class="hotspots" aria-label="空间探索锚点"></div>
+    <aside id="field-record" class="field-record" aria-label="科学考察记录" aria-hidden="true" inert>
+      <div class="record-topline"><span id="record-number">FIELD NOTE / 01</span><button id="record-close" aria-label="关闭考察记录，继续自由漫游">×</button></div>
+      <p class="record-kicker" id="record-kicker"></p>
+      <h2 id="record-title"></h2>
+      <p class="record-copy" id="record-copy"></p>
+      <span class="record-footnote">ORBITAL OBSERVATORY · 模拟考察</span>
+    </aside>
+    <p class="orbit-guidance" aria-live="polite"><span>FREE ORBIT</span><span class="orbit-instructions">拖拽环绕 · 滚轮缩放 · 点击光标探索</span></p>
+    <dl class="flight-readouts" aria-label="模拟航行遥测">
+      <div><dt>ALTITUDE</dt><dd><span id="altitude-value">—</span> <small>KM</small></dd></div>
+      <div><dt>VELOCITY</dt><dd><span id="velocity-value">0.0</span> <small>KM/S</small></dd></div>
+      <div><dt>TEMP</dt><dd><span id="temperature-value">—</span> <small>K</small></dd></div>
+    </dl>
+    <footer class="telemetry" aria-hidden="true"><span class="edition">ORBITAL <i>—</i> A DEEP SPACE ODYSSEY</span><span class="scroll-invitation">SCROLL TO TRAVEL <span>↓</span></span><span class="distance"><span id="flight-percent">000</span> / 100</span></footer>
+    <main class="flight-scroll" aria-label="向下滚动，完成八段深空航行">
+      <section class="flight-chapter" aria-label="第一章：从深空远眺气态巨行星"></section>
+      <section class="flight-chapter" aria-label="第二章：穿越倾斜的碎石星环"></section>
+      <section class="flight-chapter" aria-label="第三章：掠过风暴与大气地平线"></section>
+      <section class="flight-chapter" aria-label="第四章：绕至背光暗面，观察日食"></section>
+      <section class="flight-chapter" aria-label="第五章：拉远，回归无垠星海"></section>
+      <section class="flight-chapter" aria-label="第六章：超光速星际跃迁"></section>
+      <section class="flight-chapter" aria-label="第七章：观测黑洞视界与吸积盘"></section>
+      <section class="flight-chapter" aria-label="第八章：远眺黑洞，回归星海"></section>
+    </main>
+    <div class="failure" role="alert" hidden><p>暂时无法开启这段航行。</p><span id="failure-message">请开启浏览器的硬件加速后重新载入。</span><button onclick="location.reload()">重新载入 ↗</button></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
