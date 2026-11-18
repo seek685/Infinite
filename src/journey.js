@@ -16,12 +16,14 @@ export function journeyState(progress){
 
 // The original flight sampler and its first five lenses are left untouched.
 export function applyJourneyCamera(camera,departure,progress,time,pointer,reducedMotion){
-  const state=journeyState(progress),portrait=innerWidth/innerHeight<.85;
+  const narrowPortrait=innerWidth<768&&innerHeight>innerWidth;
+  const state=journeyState(progress),portrait=narrowPortrait||innerWidth/innerHeight<.85;
   const epilogue=MathUtils.smootherstep(state.offset,2,3),distanceScale=portrait?1.7:1;
-  closePosition.set(3.6,3.7,25).multiplyScalar(distanceScale).add(BLACK_HOLE_CENTER);
+  const captionClearance=narrowPortrait&&innerHeight<640?1.1:1;
+  closePosition.set(3.6,3.7,25).multiplyScalar(distanceScale*captionClearance).add(BLACK_HOLE_CENTER);
   farPosition.set(-16,8.5,67).multiplyScalar(portrait?1.45:1).add(BLACK_HOLE_CENTER);
   camera.position.copy(departure.position).lerp(closePosition,state.travel).lerp(farPosition,epilogue);
-  lookTarget.copy(BLACK_HOLE_CENTER);if(portrait)lookTarget.y-=MathUtils.lerp(5,8,epilogue);
+  lookTarget.copy(BLACK_HOLE_CENTER);if(portrait&&!narrowPortrait)lookTarget.y-=MathUtils.lerp(5,8,epilogue);
   lookCamera.position.copy(camera.position);lookCamera.lookAt(lookTarget);
   lookCamera.rotateZ(MathUtils.lerp(-.055,.025,epilogue));
   camera.quaternion.slerpQuaternions(departure.quaternion,lookCamera.quaternion,MathUtils.smootherstep(state.offset,.24,1.28));
@@ -29,7 +31,8 @@ export function applyJourneyCamera(camera,departure,progress,time,pointer,reduce
   camera.fov=MathUtils.lerp(departure.fov,framing,state.travel)+(reducedMotion?6:57)*state.jump;
   const departureOffset=departure.view?.enabled?departure.view.offsetX/departure.view.fullWidth:0;
   const offset=MathUtils.lerp(departureOffset,portrait?0:-.18,state.travel);
-  camera.setViewOffset(innerWidth,innerHeight,offset*innerWidth,0,innerWidth,innerHeight);
+  const verticalOffset=departure.view?.enabled?departure.view.offsetY/departure.view.fullHeight:0;
+  camera.setViewOffset(innerWidth,innerHeight,offset*innerWidth,MathUtils.lerp(verticalOffset,narrowPortrait?-.12:0,state.travel)*innerHeight,innerWidth,innerHeight);
   if(!reducedMotion){
     camera.translateX(Math.sin(time*47)*.018*state.jump+pointer.x*.08*state.reveal);
     camera.translateY(Math.sin(time*61+.7)*.012*state.jump-pointer.y*.08*state.reveal);

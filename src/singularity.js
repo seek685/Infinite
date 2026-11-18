@@ -5,14 +5,15 @@ import singularityFragment from './shaders/singularity.frag.glsl?raw';
 import warpVertex from './shaders/warp.vert.glsl?raw';
 import warpFragment from './shaders/warp.frag.glsl?raw';
 
-export function createSingularity(scene,camera,compact){
+export function createSingularity(scene,camera,profile){
+  const {compact}=profile;
   let seed=19473;
   const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
   const blackHole=new THREE.Group();blackHole.name='The singularity / distant stellar system';
   blackHole.position.copy(BLACK_HOLE_CENTER);scene.add(blackHole);blackHole.visible=false;
   const horizon=new THREE.Mesh(new THREE.SphereGeometry(HORIZON_RADIUS,96,64),new THREE.MeshBasicMaterial({color:0x000000}));
   horizon.name='Opaque event horizon';blackHole.add(horizon);
-  const starCount=compact?5000:9000,positions=new Float32Array(starCount*3),colors=new Float32Array(starCount*3),sizes=new Float32Array(starCount);
+  const starCount=profile.distantStars,positions=new Float32Array(starCount*3),colors=new Float32Array(starCount*3),sizes=new Float32Array(starCount);
   for(let i=0;i<starCount;i++){
     const azimuth=random()*Math.PI*2,y=random()*2-1,r=140+random()*500,s=Math.sqrt(1-y*y);
     positions.set([Math.cos(azimuth)*s*r,y*r,Math.sin(azimuth)*s*r],i*3);
@@ -42,7 +43,7 @@ export function createSingularity(scene,camera,compact){
   };
   pass.dispose=()=>{disposeRays();copy.dispose();rawRays.dispose();};
 
-  const streakCount=compact?1800:3000;
+  const streakCount=profile.warpStreaks;
   const plane=new THREE.PlaneGeometry(1,1),geometry=new THREE.InstancedBufferGeometry();
   geometry.index=plane.index.clone();geometry.setAttribute('position',plane.attributes.position.clone());geometry.setAttribute('uv',plane.attributes.uv.clone());geometry.instanceCount=streakCount;plane.dispose();
   const angle=new Float32Array(streakCount),radius=new Float32Array(streakCount),phase=new Float32Array(streakCount),speed=new Float32Array(streakCount);

@@ -1,12 +1,30 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="initializing">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#030509" />
-    <meta name="description" content="ORBITAL — 一段穿过星环、风暴与日食的实时三维深空航行。" />
-    <link rel="icon" href="data:," />
-    <title>ORBITAL — A passage through the infinite</title>
+    <meta name="description" content="Infinite Li 的个人宇宙。穿过星环、风暴与日食，跃迁至黑洞，在八幕实时三维航行中探索无限。" />
+    <link rel="canonical" href="https://infinite-li.cn/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Infinite Li" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:url" content="https://infinite-li.cn/" />
+    <meta property="og:title" content="ORBITAL | Infinite Li" />
+    <meta property="og:description" content="Infinite Li 的个人宇宙。穿过星环、风暴与日食，跃迁至黑洞，在八幕实时三维航行中探索无限。" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'%3E%3Crect width='36' height='36' rx='8' fill='%23030509'/%3E%3Cg fill='none' stroke='%23dce6e1' stroke-width='1'%3E%3Ccircle cx='18' cy='18' r='9'/%3E%3Cellipse cx='18' cy='18' rx='16' ry='6' transform='rotate(-43 18 18)'/%3E%3C/g%3E%3C/svg%3E" />
+    <title>ORBITAL | Infinite Li</title>
+    <style>
+      html.initializing{overflow:hidden;background:#000}body{margin:0}
+      #preloader{position:fixed;inset:0;z-index:100;display:grid;place-items:center;background:#000;color:#8ba1a4;font:8px/1.8 'Courier New',monospace;letter-spacing:.16em;opacity:1;visibility:visible;transition:opacity .9s ease,visibility .9s}
+      #preloader[hidden]{display:none}.loading-panel{width:260px;max-width:calc(100vw - 64px)}
+      #loading-label{display:block;margin-bottom:20px;font-weight:400;line-height:1.8}
+      .loading-track{height:1px;background:#b6dace20;overflow:hidden}#loading-progress{display:block;height:100%;background:#b6dace;transform:scaleX(0);transform-origin:left;transition:transform .35s ease}
+      .loading-status{display:flex;justify-content:space-between;gap:10px;margin-top:12px;font-size:7px;letter-spacing:.08em;color:#53696e}#loading-value{color:#a5bfbb;font-variant-numeric:tabular-nums}
+      #loading-retry{margin-top:24px;padding:8px 0;border:0;border-bottom:1px solid #779b98;background:none;color:#b6dace;font:inherit;cursor:pointer}
+      body.ready #preloader{opacity:0;visibility:hidden;pointer-events:none}
+      @media(prefers-reduced-motion:reduce){#preloader,#loading-progress{transition:none}}
+    </style>
   </head>
   <body>
     <canvas id="universe" aria-label="实时三维宇宙：气态巨行星、粒子星环与深空恒星"></canvas>
@@ -28,7 +46,14 @@
         <button id="sound-button" class="text-control sound-button" aria-label="开启空间音效" aria-pressed="false"><span class="sound-wave" aria-hidden="true"><i></i><i></i><i></i></span>SOUND</button>
       </div>
     </header>
-    <div class="loading" role="status"><span class="loading-orbit"></span><span id="loading-label">ALIGNING ORBITS</span></div>
+    <div id="preloader" role="progressbar" aria-label="正在初始化深空航线" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div class="loading-panel">
+        <span id="loading-label">INITIALIZING ORBITAL TELEMETRY...</span>
+        <div class="loading-track"><span id="loading-progress"></span></div>
+        <div class="loading-status"><span id="loading-detail">ESTABLISHING CONNECTION</span><span id="loading-value">000%</span></div>
+        <button id="loading-retry" hidden>重新载入 ↗</button>
+      </div>
+    </div>
     <aside class="film-caption" aria-label="当前航行章节">
       <div class="caption-meta"><span id="chapter-number">01 / 08</span><span id="chapter-kicker">THE APPROACH</span></div>
       <h1 id="chapter-title">Touch<br>the infinite.</h1>
@@ -62,6 +87,6 @@
       <section class="flight-chapter" aria-label="第八章：远眺黑洞，回归星海"></section>
     </main>
     <div class="failure" role="alert" hidden><p>暂时无法开启这段航行。</p><span id="failure-message">请开启浏览器的硬件加速后重新载入。</span><button onclick="location.reload()">重新载入 ↗</button></div>
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="/src/bootstrap.js"></script>
   </body>
 </html>

@@ -4,13 +4,15 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
 import { Vector2, Vector3, MathUtils, PerspectiveCamera } from 'three';
 import { createUniverse } from './universe.js';
-import { sampleFlight } from './flight.js';
-import { offsetEclipseCamera, readTelemetry, dampWarp, KM_PER_UNIT, MISSION_TIME_SCALE } from './immersion-math.js';
+import { applyGasCamera } from './scene/camera.js';
+import { preloader } from './ui/preloader.js';
+import { readTelemetry, dampWarp, KM_PER_UNIT, MISSION_TIME_SCALE } from './immersion-math.js';
 import { createExploration } from './exploration.js';
 import { createSpaceAudio } from './space-audio.js';
 import { CHAPTER_COUNT, GAS_END, BLACK_HOLE_CENTER, HORIZON_RADIUS, gasProgress, journeyState, applyJourneyCamera } from './journey.js';
 
 gsap.registerPlugin(ScrollTrigger);
+preloader.advance(24);
 const canvas=document.querySelector('#universe');
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
 const finePointer=matchMedia('(hover: hover) and (pointer: fine)');
@@ -28,7 +30,6 @@ const title=document.querySelector('#chapter-title'),kicker=document.querySelect
 const spaceAudio=createSpaceAudio(document.querySelector('#sound-button'));
 const pointer=new Vector2(),dampedPointer=new Vector2();
 const flight={progress:0};
-const frame={position:new Vector3(),target:new Vector3()};
 const departureCamera=new PerspectiveCamera(),telemetryPosition=new Vector3();
 let activeChapter=-1,paused=reducedMotion.matches,universe,lenis,trigger,elapsed=0,lastTime=0,raf=0,frameCount=0,frameAverage=16.7,resizeTimer;
 let renderedProgress=-1,renderDirty=true;
@@ -40,10 +41,7 @@ let exploration,frozenProgress=0;
 const orbitButton=document.querySelector('#orbit-button');
 
 function fail(error){
-  document.querySelector('.failure').hidden=false;
-  document.querySelector('#failure-message').textContent=error instanceof Error?`3D 场景启动失败：${error.message}`:'请开启浏览器硬件加速后重新载入。';
-  document.querySelector('.loading').style.display='none';
-  console.error(error);
+  preloader.fail(error);
 }
 const smoothstep=(a,b,x)=>{const t=MathUtils.clamp((x-a)/(b-a),0,1);return t*t*(3-2*t);};
 function updateHUD(progress){
@@ -94,28 +92,10 @@ function resumeFlight(){
   flight.progress=frozenProgress;trigger?.animation.progress(frozenProgress);trigger?.enable(false,false);
   lenis?.start();ScrollTrigger.update();previousProgress=flight.progress;renderDirty=true;
 }
-function applyGasCamera(camera,progress){
-  sampleFlight(progress,frame);
-  // Portrait lenses pull back only in the wide shots; the atmospheric pass stays close.
-  const portrait=innerWidth/innerHeight<.85;
-  if(portrait){
-    const closePass=1-smoothstep(.08,.22,Math.abs(progress-.5));
-    frame.position.multiplyScalar(MathUtils.lerp(1.45,1,closePass));
-    frame.target.x*=.2;frame.target.y-=1.35*(1-closePass);
-  }
-  camera.position.copy(frame.position);
-  offsetEclipseCamera(camera.position,progress);
-  const parallax=reducedMotion.matches?0:MathUtils.clamp((frame.radius-2.8)*.018,.012,.2);
-  camera.position.x+=dampedPointer.x*parallax;camera.position.y-=dampedPointer.y*parallax;
-  camera.fov=frame.fov+(portrait?7:0);
-  const composition=portrait?0:-.32*Math.exp(-Math.pow((progress-.25)/.105,2))-.22*Math.exp(-Math.pow((progress-.78)/.15,2));
-  camera.setViewOffset(innerWidth,innerHeight,composition*innerWidth,0,innerWidth,innerHeight);
-  camera.lookAt(frame.target);camera.rotateZ(frame.roll+dampedPointer.x*.006);
-}
 function applyFlightCamera(camera){
-  if(flight.progress<=GAS_END)applyGasCamera(camera,gasProgress(flight.progress));
+  if(flight.progress<=GAS_END)applyGasCamera(camera,gasProgress(flight.progress),dampedPointer,reducedMotion.matches);
   else{
-    applyGasCamera(departureCamera,1);
+    applyGasCamera(departureCamera,1,dampedPointer,reducedMotion.matches);
     applyJourneyCamera(camera,departureCamera,flight.progress,elapsed,dampedPointer,reducedMotion.matches);
   }
 }
@@ -165,18 +145,20 @@ window.addEventListener('resize',()=>{
 canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();cancelAnimationFrame(raf);document.querySelector('.failure').hidden=false;document.querySelector('#failure-message').textContent='图形上下文已中断，请重新载入以恢复航行。';});
 
 try{
-  universe=await createUniverse(canvas);
+  universe=await createUniverse(canvas,preloader.advance);
   configureScroll();
   applyFlightCamera(universe.camera);
   exploration=createExploration({camera:universe.camera,canvas,anchors:universe.anchors,reducedMotion,lockFlight,resumeFlight,routePose:applyFlightCamera,
     orbitContext:()=>journeyState(flight.progress).offset>=1.88?{center:BLACK_HOLE_CENTER,minDistance:11,maxDistance:140}:null});
   universe.render(0,0);
   if(universe.diagnostics().shaderErrors.length)throw new Error('着色器编译失败');
-  document.body.classList.add('ready');
-  lastTime=performance.now();raf=requestAnimationFrame(draw);
+  preloader.advance(92);
+  lastTime=performance.now();
+  await new Promise((resolve,reject)=>{raf=requestAnimationFrame(timestamp=>{try{draw(timestamp);resolve();}catch(error){reject(error);}});});
+  await preloader.complete();
   if(import.meta.env.DEV){
     window.__ORBITAL__={
-      diagnostics:()=>({...universe.diagnostics(),telemetry,exploration:exploration.diagnostics(),audio:spaceAudio.diagnostics(),progress:flight.progress,gasProgress:gasProgress(flight.progress),cameraPosition:universe.camera.position.toArray(),cameraFov:universe.camera.fov,frameAverage,paused,caption:activeChapter,scrollHeight:document.documentElement.scrollHeight,viewportHeight:innerHeight}),
+      diagnostics:()=>({...universe.diagnostics(),preloader:preloader.diagnostics(),telemetry,exploration:exploration.diagnostics(),audio:spaceAudio.diagnostics(),progress:flight.progress,gasProgress:gasProgress(flight.progress),cameraPosition:universe.camera.position.toArray(),cameraFov:universe.camera.fov,cameraView:{...universe.camera.view},frameAverage,paused,caption:activeChapter,scrollHeight:document.documentElement.scrollHeight,viewportHeight:innerHeight}),
       seek:progress=>{lenis?.scrollTo(progress*(document.documentElement.scrollHeight-innerHeight),{immediate:true});if(!lenis)window.scrollTo(0,progress*(document.documentElement.scrollHeight-innerHeight));},
     };
   }

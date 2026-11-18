@@ -1,4 +1,4 @@
-# ORBITAL — A passage through the infinite
+# ORBITAL | Infinite Li
 
 个人网站正式入口：[infinite-li.cn](https://infinite-li.cn/)。后续公开版本沿用此域名，本目录保留开发源码。
 
@@ -21,13 +21,15 @@ npm run dev
 - 页面总高度 800vh，`scrub: 1.8` 驱动八幕航行。前五幕继续使用原有的球面坐标路径，实际滚动距离与镜头映射保持一致；后三幕接续超光速跃迁、黑洞近观与最终远眺。
 - 六倍频 simplex FBM、差速云带、涡旋、细粒度纹理、定向光照、镜面与昼夜边界、星环投影。
 - 三层 Fresnel / Additive 大气；EffectComposer → RenderPass → UnrealBloomPass → OutputPass → 颗粒、暗角与轻微色散。
-- 桌面 96,000 / 手机 48,000 颗三维星环粒子，以及 1,800 / 650 个实例化碎石；四段真实环缝，分层恒星与星云粒子。
+- 桌面 96,000 / 手机 32,000 颗三维星环粒子，以及 1,800 / 480 个实例化碎石；四段真实环缝，分层恒星与星云粒子。
 - 限制设备像素比、根据持续帧耗时降低渲染分辨率；标签隐藏暂停绘制，减少动态效果模式下暂停环境动画并按需重绘；尊重系统减少动态效果设置。
 - 字幕只有一个 DOM 实例，章节交替时先淡出再换文案；移动端独立构图。
 
 ## 文件
 
-`src/flight.js` 航线与镜头；`src/universe.js` 场景和后期；`src/shaders/` GLSL；`src/main.js` 滚动与字幕；`src/style.css` HUD。
+`src/flight.js` 原五幕航线；`src/scene/camera.js` 镜头构图；`src/scene/viewport.js` 设备预算；`src/universe.js` 场景和后期；`src/shaders/` GLSL；`src/main.js` 滚动与字幕；`src/style.css` HUD。
+
+`src/bootstrap.js` 轻量入口；`src/ui/preloader.js` 加载过渡；`src/space-audio.js` 程序音效；`src/exploration.js` 自由漫游与标点。原有独立模块保留位置，避免无必要的文件迁移。
 
 ## 验证
 
@@ -37,9 +39,12 @@ npm run build
 # 保持开发服务器运行，再在另一个终端执行：
 npm run verify:browser
 npm run verify:exploration
+npm run verify:delivery
 ```
 
-浏览器验证使用本机 Chrome / Edge；其他路径可通过 `BROWSER_PATH` 指定。检查桌面、手机、横屏和减少动态效果模式的 32 个镜头，包括 GLSL 链接状态、WebGL 错误、控制台、资源请求、导航按钮、鼠标视差、滚动与字幕边界。报告及截图保存在 `.qa/`。
+浏览器验证使用本机 Chrome / Edge；其他路径可通过 `BROWSER_PATH` 指定。检查桌面、320 / 390 / 767 像素竖屏、手机横屏和减少动态效果模式的 48 个镜头，包括 GLSL 链接状态、WebGL 错误、控制台、资源请求、导航按钮、鼠标视差、滚动与字幕边界。报告及截图保存在 `.qa/`。
+
+`verify:delivery` 阻塞脚本请求验证首屏遮罩，再检查实际 WebGL 绘制先于遮罩淡出、进度单调递增、标题和分享信息、原生触屏滑动及横竖屏切换。它也支持通过 `PREVIEW_URL` 检查生产预览；其余两个浏览器脚本使用开发模式诊断接口。
 
 `npm run preview` 可在 http://127.0.0.1:4173/ 预览生产构建。
 
@@ -67,9 +72,18 @@ npm run verify:exploration
 
 ## 第六至八幕：跃迁与奇点
 
-- `src/journey.js` 把全程进度前 `4/7` 映射到原有五幕的 `0…1`；原 `src/flight.js`、行星、星环、日食着色器未修改。第六幕从原终点连续移动至远方第二天体，拉伸 FOV，叠加轻微震动与 3,000 / 1,800 条实例化三维光流；减少动态效果模式取消震动并限制 FOV 变化。
+- `src/journey.js` 把全程进度前 `4/7` 映射到原有五幕的 `0…1`；原 `src/flight.js`、行星、星环、日食着色器未修改。第六幕从原终点连续移动至远方第二天体，拉伸 FOV，叠加轻微震动与 3,000 / 1,400 条实例化三维光流；减少动态效果模式取消震动并限制 FOV 变化。
 - `src/singularity.js` 与 `src/shaders/singularity.frag.glsl` 提供不透明黑色视界球体、旋转吸积盘、弯曲光线与独立深空恒星。着色器在三维空间中积分有效零测地线，并求光线与盘面的交点，形成多重盘面光像；差速旋转、细密湍流和多普勒式明暗变化产生橙金与青白色层次。
 - 这是电影化的 Schwarzschild 型近似，不是精确 Kerr 时空求解器。实时黑洞渲染的背景可参阅 [Eric Bruneton 的研究说明](https://ebruneton.github.io/black_hole_shader/)；本项目没有复制其实现或使用其预计算资源。
 - 黑洞输出接入现有 UnrealBloomPass，使用独立的捕获光线遮罩保护纯黑视界；前五幕的泛光参数完全保留。镜头抵达后光流归零，第八幕拉远收尾，支持反向滚动返回原行星。
 - 第七、八幕的 FREE ORBIT 以黑洞为中心，保留阻尼、缩放和返回航线；原行星的三个考察标点在离开该星系后隐藏。SOUND 默认静音机制不变，跃迁进度也驱动推进音滤波。
 - 扩展前备份：`.qa/before-singularity-20261118-122654/`；原材质与镜头保留检查：`.qa/singularity-preservation.json`。
+
+## 上线整理与移动端
+
+- Git 初始存档为 `e1ecb00`（`v1.0 live planet base`）。`node_modules/`、`dist/`、本地验证截图和日志不进入版本库；`npm ci` 可恢复锁定依赖，`npm run build` 生成 `dist/`。
+- 纯黑加载层及其样式直接包含在 HTML 中，先于大体积模块显示。百分比表示脚本就绪、场景建立、着色器编译和首帧绘制等启动阶段，不是网络下载字节百分比。完成实际绘制后等候浏览器绘制机会，再淡出；减少动态效果模式直接退出遮罩。
+- 窄屏竖屏的宽景按外环半径与水平视角计算安全距离，行星略偏下；穿环和大气近景保留原镜头距离。字幕移至导航下方，小屏单独缩小字号与间距，并为刘海及底部手势区留出空间。黑洞取景也为上方字幕留白；跃迁及自由漫游交接时继续插值竖向构图，避免镜头跳动。
+- 像素比始终不超过 `Math.min(devicePixelRatio, 2)`；保留桌面 1.5 的原有预算，手机上限为 1.25。手机减少背景恒星、尘埃、星环碎石与跃迁光流数量；着色器、光照、环缝及后期效果保持原样。持续低帧率时沿用原有分辨率回退，触屏航线使用原生纵向滚动。
+- 标题、内联轨道 SVG Favicon、canonical 和 OpenGraph 信息指向个人域名。无需外链图片或字体。基本分享信息不依赖客户端 JavaScript。
+- `tests/fixtures/desktop-camera.json` 从初始 Git 存档提取 18 组桌面镜头作为回归基准；测试还覆盖手机外环完整可见、日食遮挡比例和跃迁交接连续性。浏览器移动视口验证不能替代真实手机的持续温度与帧率测量。

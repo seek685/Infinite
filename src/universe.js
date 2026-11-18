@@ -7,6 +7,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { PLANET_RADIUS, SUN_DIRECTION } from './flight.js';
 import { createImmersion } from './immersion.js';
 import { createSingularity } from './singularity.js';
+import { renderProfile } from './scene/viewport.js';
 import noise from './shaders/noise.glsl?raw';
 import sphereVertex from './shaders/sphere.vert.glsl?raw';
 import planetFragment from './shaders/planet.frag.glsl?raw';
@@ -70,8 +71,9 @@ const gradeShader={
   }`
 };
 
-export async function createUniverse(canvas) {
-  const compact=innerWidth<700||matchMedia('(pointer: coarse)').matches;
+export async function createUniverse(canvas,onProgress=()=>{}) {
+  onProgress(30);
+  const profile=renderProfile(innerWidth,devicePixelRatio,matchMedia('(pointer: coarse)').matches);
   const renderer=new THREE.WebGLRenderer({canvas,antialias:false,alpha:false,powerPreference:'high-performance',precision:'highp'});
   renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
@@ -82,7 +84,7 @@ export async function createUniverse(canvas) {
     const error=[gl.getProgramInfoLog(program),gl.getShaderInfoLog(vertex),gl.getShaderInfoLog(fragment)].filter(Boolean).join('\n');
     shaderErrors.push(error);console.error('ORBITAL GLSL:',error);
   };
-  let pixelRatio=Math.min(devicePixelRatio,compact?1.4:1.5);
+  let pixelRatio=profile.pixelRatio;
   const scene=new THREE.Scene();scene.background=new THREE.Color('#020409');
   const camera=new THREE.PerspectiveCamera(43,innerWidth/innerHeight,.035,1200);
   camera.position.set(0,4,15);
@@ -106,7 +108,7 @@ export async function createUniverse(canvas) {
   }
 
   // Actual 3D points, with orbital thickness, radial gaps and a world-space planet shadow.
-  const particleCount=compact?48000:96000;
+  const particleCount=profile.ringParticles;
   const ringPositions=new Float32Array(particleCount*3),ringSizes=new Float32Array(particleCount),ringSeeds=new Float32Array(particleCount);
   for(let i=0;i<particleCount;i++){
     const radius=ringRadius(),angle=random()*Math.PI*2;
@@ -121,7 +123,7 @@ export async function createUniverse(canvas) {
   const ringDust=new THREE.Mesh(dustGeometry,dustMaterial);ringDust.renderOrder=1;rings.add(ringDust);
 
   // Near the fly-through, individual silhouettes become real instanced rock meshes.
-  const rockCount=compact?650:1800;
+  const rockCount=profile.rocks;
   const rockGeometry=new THREE.IcosahedronGeometry(1,1);
   const vertices=rockGeometry.attributes.position;
   for(let i=0;i<vertices.count;i++){
@@ -161,7 +163,7 @@ export async function createUniverse(canvas) {
     const material=new THREE.ShaderMaterial({name:isDust?'Volumetric nebula particles':'Multi-depth temperature stars',uniforms:{uTime:time,uHeight:height,uPixelRatio:ratio,uDust:{value:isDust?1:0},uWarp:warp,uAspect:aspect},vertexShader:starsVertex,fragmentShader:starsFragment,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending});
     const cloud=new THREE.Points(geometry,material);scene.add(cloud);return cloud;
   }
-  makeStars(compact?6500:11500);makeStars(compact?2100:4000,true);
+  makeStars(profile.stars);makeStars(profile.dust,true);
 
   const sun=new THREE.Mesh(new THREE.SphereGeometry(7.0,32,24),new THREE.MeshBasicMaterial({color:new THREE.Color(12,9.5,7.0)}));sun.position.copy(SUN_DIRECTION).multiplyScalar(220);scene.add(sun);
   const corona=new THREE.Mesh(new THREE.PlaneGeometry(140,140),new THREE.ShaderMaterial({
@@ -172,20 +174,24 @@ export async function createUniverse(canvas) {
 
   const immersion=createImmersion(scene,camera,sun);
   const originalObjects=[...scene.children];
-  const singularity=createSingularity(scene,camera,compact);
+  const singularity=createSingularity(scene,camera,profile);
   const composer=new EffectComposer(renderer);
   const bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),.48,.55,1.02);
   composer.addPass(new RenderPass(scene,camera));composer.addPass(singularity.pass);composer.addPass(bloom);composer.addPass(immersion.flare);composer.addPass(new OutputPass());
   const grade=new ShaderPass(gradeShader);composer.addPass(grade);composer.addPass(singularity.shadowPass);
   function resize(){
     const w=innerWidth,h=innerHeight;camera.aspect=w/h;camera.updateProjectionMatrix();
+    pixelRatio=Math.min(pixelRatio,renderProfile(w,devicePixelRatio,matchMedia('(pointer: coarse)').matches).pixelRatio);
     renderer.setPixelRatio(pixelRatio);renderer.setSize(w,h,false);composer.setPixelRatio(pixelRatio);composer.setSize(w,h);
     height.value=h;ratio.value=pixelRatio;aspect.value=w/h;grade.uniforms.uResolution.value.set(w*pixelRatio,h*pixelRatio);
   }
   resize();
+  onProgress(52);await new Promise(resolve=>requestAnimationFrame(resolve));
   await renderer.compileAsync(scene,camera);
+  onProgress(72);
   const warmup=new THREE.Scene(),warmupPlane=new THREE.Mesh(new THREE.PlaneGeometry(2,2),singularity.pass.material);
   warmup.add(warmupPlane);await renderer.compileAsync(warmup,camera);warmupPlane.geometry.dispose();
+  onProgress(86);
   function render(elapsed,delta,warpStrength=0,progress=0){
     time.value=elapsed;planet.rotation.y=elapsed*.009;rings.rotation.y=elapsed*.0018;
     corona.lookAt(camera.position);grade.uniforms.uTime.value=elapsed;

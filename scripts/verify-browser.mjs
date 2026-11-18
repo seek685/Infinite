@@ -16,6 +16,8 @@ const baseURL=process.env.PREVIEW_URL||'http://127.0.0.1:5173/';
 const cases=[
   {name:'desktop',viewport:{width:1440,height:900},deviceScaleFactor:1},
   {name:'mobile',viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true},
+  {name:'small-mobile',viewport:{width:320,height:568},deviceScaleFactor:2,isMobile:true,hasTouch:true},
+  {name:'wide-portrait',viewport:{width:767,height:1024},deviceScaleFactor:2,isMobile:true,hasTouch:true},
   {name:'landscape',viewport:{width:844,height:390},deviceScaleFactor:1,isMobile:true,hasTouch:true},
   {name:'reduced-motion',viewport:{width:1280,height:800},deviceScaleFactor:1,reducedMotion:'reduce'},
 ];

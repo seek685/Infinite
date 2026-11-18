@@ -9,7 +9,8 @@
     "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
     "test": "node --test tests/*.test.js",
     "verify:browser": "node scripts/verify-browser.mjs",
-    "verify:exploration": "node scripts/verify-exploration.mjs"
+    "verify:exploration": "node scripts/verify-exploration.mjs",
+    "verify:delivery": "node scripts/verify-delivery.mjs"
   },
   "dependencies": {
     "gsap": "3.15.1",

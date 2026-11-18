@@ -24,6 +24,16 @@ try{
     const state=()=>page.evaluate(()=>window.__ORBITAL__.diagnostics());
     const waitMode=mode=>page.waitForFunction(mode=>window.__ORBITAL__.diagnostics().exploration.mode===mode,mode);
     const seek=async progress=>{await page.evaluate(p=>window.__ORBITAL__.seek(p),progress);await page.waitForFunction(p=>Math.abs(window.__ORBITAL__.diagnostics().progress-p)<.0001,progress);await page.waitForTimeout(300);};
+    const traceFraming=()=>page.evaluate(()=>{
+      window.orbitFraming=[];
+      const sample=()=>{window.orbitFraming.push(window.__ORBITAL__.diagnostics().cameraView.offsetY);window.orbitFrame=requestAnimationFrame(sample);};sample();
+    });
+    const checkFraming=async()=>{
+      await page.waitForTimeout(80);
+      const trace=await page.evaluate(()=>{cancelAnimationFrame(window.orbitFrame);return window.orbitFraming;});
+      assert.ok(trace.length>10);
+      assert.ok(trace.every((value,i)=>i===0||Math.abs(value-trace[i-1])<settings.viewport.height*.04),'portrait framing must interpolate without a cut');
+    };
     const initial=await state();assert.equal(initial.audio.created,false);assert.equal(initial.exploration.mode,'flight');
     const navFits=await page.evaluate(()=>{
       const nav=document.querySelector('.flight-navigation').getBoundingClientRect(),actions=document.querySelector('.navigation-actions').getBoundingClientRect(),logo=document.querySelector('.orbit-symbol').getBoundingClientRect();
@@ -94,7 +104,9 @@ try{
 
     await seek(6/7);
     const blackHoleDeparture=await state();
+    if(name==='mobile')await traceFraming();
     await page.locator('#orbit-button').click();await waitMode('orbit');
+    if(name==='mobile')await checkFraming();
     assert.deepEqual((await state()).exploration.target,[0,0,-1800],'free orbit must use the current celestial body');
     const w=settings.viewport.width,h=settings.viewport.height;
     await page.mouse.move(w*.75,h*.42);await page.mouse.down();await page.mouse.move(w*.35,h*.55,{steps:20});await page.mouse.up();await page.waitForTimeout(500);
@@ -102,9 +114,12 @@ try{
     assert.ok((await state()).journey.blackHoleDistance>=11);
     assert.ok((await state()).exploration.hotspots.every(pin=>!pin.visible));
     await page.screenshot({path:`.qa/${name}-black-hole-orbit.png`});
+    if(name==='mobile')await traceFraming();
     await page.locator('#orbit-button').click();await waitMode('flight');
+    if(name==='mobile')await checkFraming();
     assert.ok(Math.abs((await state()).progress-6/7)<.0002);
     assert.ok(distance((await state()).cameraPosition,blackHoleDeparture.cameraPosition)<.2);
+    assert.ok(Math.abs((await state()).cameraView.offsetY-blackHoleDeparture.cameraView.offsetY)<.1);
     await seek(0);
 
     // Toggle during a transition: only the final intent owns the camera.

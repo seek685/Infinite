@@ -63,7 +63,7 @@ export function createExploration({camera,canvas,anchors,reducedMotion,lockFligh
   }
   function pose(position,lookAt,fov=50){
     scratchCamera.position.copy(position);scratchCamera.up.set(0,1,0);scratchCamera.lookAt(lookAt);
-    return {position:position.clone(),quaternion:scratchCamera.quaternion.clone(),fov,offset:0};
+    return {position:position.clone(),quaternion:scratchCamera.quaternion.clone(),fov,offset:0,offsetY:0};
   }
   function connectControls(){
     controls?.dispose();
@@ -75,7 +75,7 @@ export function createExploration({camera,canvas,anchors,reducedMotion,lockFligh
   }
   function animateTo(destination,onComplete,duration=1.7){
     transition?.tween.kill();if(controls)controls.enabled=false;
-    const from={position:camera.position.clone(),quaternion:camera.quaternion.clone(),fov:camera.fov,offset:camera.view?.enabled?camera.view.offsetX/camera.view.fullWidth:0};
+    const from={position:camera.position.clone(),quaternion:camera.quaternion.clone(),fov:camera.fov,offset:camera.view?.enabled?camera.view.offsetX/camera.view.fullWidth:0,offsetY:camera.view?.enabled?camera.view.offsetY/camera.view.fullHeight:0};
     const next={from,destination,onComplete,progress:0,done:false};
     next.tween=gsap.to(next,{progress:1,duration:reducedMotion.matches?.01:duration,ease:'power2.inOut',onComplete:()=>{next.done=true;}});
     transition=next;
@@ -96,7 +96,7 @@ export function createExploration({camera,canvas,anchors,reducedMotion,lockFligh
     afterExit=callback;mode='returning';hideRecord();reflect();
     animateTo(()=>{
       routePose(scratchCamera);
-      return {position:scratchCamera.position,quaternion:scratchCamera.quaternion,fov:scratchCamera.fov,offset:scratchCamera.view?.enabled?scratchCamera.view.offsetX/scratchCamera.view.fullWidth:0};
+      return {position:scratchCamera.position,quaternion:scratchCamera.quaternion,fov:scratchCamera.fov,offset:scratchCamera.view?.enabled?scratchCamera.view.offsetX/scratchCamera.view.fullWidth:0,offsetY:scratchCamera.view?.enabled?scratchCamera.view.offsetY/scratchCamera.view.fullHeight:0};
     },()=>{
       controls?.dispose();controls=null;mode='flight';canvas.style.touchAction='pan-y';canvas.style.cursor='';
       reflect();resumeFlight();button.focus({preventScroll:true});const callback=afterExit;afterExit=undefined;callback?.();
@@ -140,7 +140,8 @@ export function createExploration({camera,canvas,anchors,reducedMotion,lockFligh
       camera.quaternion.slerpQuaternions(next.from.quaternion,destination.quaternion,t);
       camera.fov=MathUtils.lerp(next.from.fov,destination.fov,t);
       const offset=MathUtils.lerp(next.from.offset,destination.offset,t);
-      camera.setViewOffset(innerWidth,innerHeight,offset*innerWidth,0,innerWidth,innerHeight);
+      const offsetY=MathUtils.lerp(next.from.offsetY,destination.offsetY,t);
+      camera.setViewOffset(innerWidth,innerHeight,offset*innerWidth,offsetY*innerHeight,innerWidth,innerHeight);
       if(next.done){transition=null;next.onComplete();}
     }else if(mode==='orbit'){
       if(selected){
