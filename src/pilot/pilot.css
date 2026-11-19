@@ -60,6 +60,9 @@ body.piloting .orbit-symbol {opacity:.45}
 .pilot-throttle [data-held] {background:#427d7d52;color:#f2fff8}
 .has-touch .pilot-action {bottom:calc(103px + env(safe-area-inset-bottom))}
 .has-touch .pilot-feedback {bottom:calc(219px + env(safe-area-inset-bottom))}
+/* Netlify reserves a 64px touch area in the lower-right corner of the live site. */
+html:has(#nl-badge-frame) .pilot-hud :is(.pilot-radar,.pilot-velocity,.pilot-keys,.pilot-stick,.pilot-throttle),
+html:has(#nl-badge-frame) .pilot-hud.has-touch :is(.pilot-action,.pilot-feedback) {margin-bottom:64px}
 @media(max-width:900px) and (pointer:fine) {.pilot-keys {max-width:250px;white-space:normal}}
 @media(max-width:600px) {
   .pilot-radar {gap:7px}.pilot-radar canvas {width:56px;height:56px}.pilot-target {max-width:130px}

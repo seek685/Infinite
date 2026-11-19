@@ -136,6 +136,14 @@ try {
 
   const phone=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1,hasTouch:true,isMobile:true,reducedMotion:'reduce'});
   const mobile=await phone.newPage();await ready(mobile);
+  if(['127.0.0.1','localhost'].includes(new URL(baseURL).hostname)){
+    await mobile.evaluate(()=>{
+      const badge=document.createElement('iframe');
+      badge.id='nl-badge-frame';badge.title='Hosting badge test fixture';
+      badge.style.cssText='position:fixed;right:0;bottom:0;width:197px;height:64px;border:0;z-index:2147483647';
+      document.body.append(badge);
+    });
+  }
   await mobile.locator('#pilot-button').tap();await phase(mobile,'cruising');
   await mobile.screenshot({path:'.qa/pilot-mobile.png'});
   const cdp=await phone.newCDPSession(mobile);
@@ -149,7 +157,12 @@ try {
   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
   await mobile.locator('#pilot-button').tap();await phase(mobile,'idle');
   await mobile.locator('#pilot-button').tap();await phase(mobile,'cruising');
-  const thrust=await mobile.locator('[data-drive="thrust"]').boundingBox();
+  const thrustButton=mobile.locator('[data-drive="thrust"]');
+  assert.ok(await thrustButton.evaluate(button=>{
+    const rect=button.getBoundingClientRect();
+    return button.contains(document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2));
+  }),'the live hosting badge must leave the throttle touchable');
+  const thrust=await thrustButton.boundingBox();
   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:thrust.x+thrust.width/2,y:thrust.y+thrust.height/2}]});
   await mobile.locator('.pilot-action:visible').filter({hasText:'DOCK'}).waitFor();
   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
