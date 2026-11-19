@@ -61,6 +61,12 @@ anchor: division
 
 ### 三维航行
 
+点击 **PILOT SHIP** 从当前章节进入驾驶舱。W 推进，S 制动，A / D 偏航，Q / E 或上下方向键控制俯仰，按住 Shift + W 超频。雷达以机头为上方。按 R 或点击雷达旁的目标名，可以切换空间站与文章信标，查看距离和方位。触屏使用左侧摇杆和右侧推进键。
+
+飞入青色对接圈后，按 F 或点按对接提示进入造物展厅。靠近八面体信标时按 F 扫描并阅读对应日志。关闭抽屉会继续驾驶，从空间站离港时机头会对准第一篇日志。EXIT PILOT 或 Esc 返回出发时的章节。驾驶音效跟随 SOUND 开关。
+
+程序飞船可用自备模型替换。将文件放入 `public/models/ship.glb`，重启开发服务器或重新构建，Vite 会自动识别。模型使用 +Y 向上、−Z 向前，载入后机身自动居中并缩放到原艇长度，推进器和翼尖特效使用原艇挂点。
+
 - Vite + Three.js + GSAP ScrollTrigger + Lenis，依赖版本由 `package-lock.json` 固定。
 - 页面总高度 800vh，`scrub: 1.8` 驱动八幕航行。前五幕继续使用原有的球面坐标路径，实际滚动距离与镜头映射保持一致；后三幕接续超光速跃迁、黑洞近观与最终远眺。
 - 六倍频 simplex FBM、差速云带、涡旋、细粒度纹理、定向光照、镜面与昼夜边界、星环投影。
@@ -85,6 +91,7 @@ npm run verify:browser
 npm run verify:exploration
 npm run verify:delivery
 npm run verify:reader
+npm run verify:pilot
 ```
 
 浏览器验证使用本机 Chrome / Edge；其他路径可通过 `BROWSER_PATH` 指定。检查桌面、320 / 390 / 767 像素竖屏、手机横屏和减少动态效果模式的 48 个镜头，包括 GLSL 链接状态、WebGL 错误、控制台、资源请求、导航按钮、鼠标视差、滚动与字幕边界。报告及截图保存在 `.qa/`。

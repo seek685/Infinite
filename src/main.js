@@ -41,6 +41,8 @@ let previousProgress=0,cameraSampled=false,velocity=0,warpStrength=0,telemetry={
 let exploration,frozenProgress=0;
 let reading=false, rotationRate=1, lastReadingPaint=0, refreshOnResume=false;
 const orbitButton=document.querySelector('#orbit-button');
+const pilotButton=document.querySelector('#pilot-button');
+let pilot,pilotLoading=false;
 
 function fail(error){
   preloader.fail(error);
@@ -62,6 +64,7 @@ function updateHUD(progress){
   document.querySelector('.scroll-invitation').style.opacity=1-smoothstep(.90,1,progress);
 }
 function travelTo(progress){
+  if(pilot?.active){pilot.exit(()=>travelTo(progress));return;}
   if(exploration?.active){exploration.exit(()=>travelTo(progress));return;}
   const y=progress*(document.documentElement.scrollHeight-innerHeight);
   if(lenis)lenis.scrollTo(y,{duration:1.7,immediate:reducedMotion.matches});
@@ -70,7 +73,7 @@ function travelTo(progress){
 document.querySelectorAll('[data-stop]').forEach(button=>button.addEventListener('click',()=>travelTo(Number(button.dataset.stop)/(CHAPTER_COUNT-1))));
 restart.addEventListener('click',()=>travelTo(0));
 window.addEventListener('pointermove',event=>{
-  if(reading||!finePointer.matches||reducedMotion.matches||exploration?.active)return;
+  if(reading||!finePointer.matches||reducedMotion.matches||exploration?.active||pilot?.active)return;
   pointer.set(event.clientX/innerWidth-.5,event.clientY/innerHeight-.5);
 },{passive:true});
 document.addEventListener('pointerleave',()=>pointer.set(0,0));
@@ -81,7 +84,7 @@ function configureScroll(){
   lenis?.on('scroll',ScrollTrigger.update);
   trigger=gsap.fromTo(flight,{progress:0},{progress:1,ease:'none',scrollTrigger:{trigger:'.flight-scroll',start:'top top',end:'bottom bottom',scrub:reducedMotion.matches?true:1.8,invalidateOnRefresh:true}}).scrollTrigger;
   ScrollTrigger.refresh();
-  if(reading){
+  if(reading||pilot?.active){
     trigger.disable(false);lenis?.stop();
     trigger.animation.progress(frozenProgress);flight.progress=frozenProgress;
   }
@@ -108,39 +111,54 @@ function setReading(open){
   reading=open;
   if(!exploration)return;
   exploration.setSuspended(open);
+  if(pilot?.active)pilot.suspend(open);
   if(open){
-    if(!exploration.active)lockFlight(false);
+    if(!exploration.active&&!pilot?.active)lockFlight(false);
     lastReadingPaint=performance.now();
   }else{
-    if(!exploration.active)resumeFlight();
+    if(!exploration.active&&!pilot?.active)resumeFlight();
     lastTime=performance.now();cameraSampled=false;renderDirty=true;
   }
 }
-function applyFlightCamera(camera){
-  if(flight.progress<=GAS_END)applyGasCamera(camera,gasProgress(flight.progress),dampedPointer,reducedMotion.matches);
+function applyFlightCamera(camera,progress=flight.progress){
+  if(progress<=GAS_END)applyGasCamera(camera,gasProgress(progress),dampedPointer,reducedMotion.matches);
   else{
     applyGasCamera(departureCamera,1,dampedPointer,reducedMotion.matches);
-    applyJourneyCamera(camera,departureCamera,flight.progress,elapsed,dampedPointer,reducedMotion.matches);
+    applyJourneyCamera(camera,departureCamera,progress,elapsed,dampedPointer,reducedMotion.matches);
   }
 }
 
+function trackFrame(delta){
+  frameCount++;frameAverage=frameAverage*.98+delta*1000*.02;
+  if(frameCount%360===0&&frameAverage>30)renderDirty=universe.reduceResolution()||renderDirty;
+}
 function draw(timestamp){
-  const delta=Math.min((timestamp-lastTime)/1000||.016,.05);lastTime=timestamp;
+  const frameDelta=Math.min((timestamp-lastTime)/1000||.016,.16);
+  const delta=Math.min(frameDelta,.05);lastTime=timestamp;
   if(reading){
     const interval=1000/(innerWidth<768?8:12);
     const sincePaint=timestamp-lastReadingPaint;
-    const animateBackground=!paused&&(!exploration.active||rotationRate>0);
+    const held=exploration.active||pilot?.active;
+    const animateBackground=!paused&&(!held||rotationRate>0);
     if(renderDirty||(animateBackground&&sincePaint>=interval)){
       const step=Math.min(Math.max(0,sincePaint)/1000,.25);
       // Settle a held observation to rest so a long article cannot move the landmark away.
-      rotationRate=MathUtils.damp(rotationRate,exploration.active?0:.12,4,step);
-      if(exploration.active&&rotationRate<.005)rotationRate=0;
+      rotationRate=MathUtils.damp(rotationRate,held?0:.12,4,step);
+      if(held&&rotationRate<.005)rotationRate=0;
       if(!paused)elapsed+=step*rotationRate;
       warpStrength=dampWarp(warpStrength,0,step,paused);
-      universe.render(elapsed,step,warpStrength,flight.progress);
+      universe.render(elapsed,step,warpStrength,pilot?.active?pilot.progress:flight.progress);
       spaceAudio.update(0,universe.camera.position,elapsed);
       lastReadingPaint=timestamp;renderDirty=false;
     }
+    raf=requestAnimationFrame(draw);return;
+  }
+  if(pilot?.active){
+    if(!paused){rotationRate=MathUtils.damp(rotationRate,1,4,delta);elapsed+=delta*rotationRate;}
+    pilot.update(frameDelta);
+    universe.render(elapsed,delta,0,pilot.active?pilot.progress:flight.progress);
+    spaceAudio.update(0,universe.camera.position,elapsed);
+    trackFrame(frameDelta);
     raf=requestAnimationFrame(draw);return;
   }
   lenis?.raf(timestamp);
@@ -172,8 +190,7 @@ function draw(timestamp){
     renderedProgress=flight.progress;renderedPointer.copy(dampedPointer);renderDirty=false;
   }
   exploration.projectHotspots(elapsed,flight.progress<=GAS_END+.005);
-  frameCount++;frameAverage=frameAverage*.98+delta*1000*.02;
-  if(frameCount%360===0&&frameAverage>30)renderDirty=universe.reduceResolution()||renderDirty;
+  trackFrame(delta);
   raf=requestAnimationFrame(draw);
 }
 document.addEventListener('visibilitychange',()=>{
@@ -183,15 +200,36 @@ document.addEventListener('visibilitychange',()=>{
 window.addEventListener('resize',()=>{
   clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{
     universe?.resize();renderDirty=true;
-    if(reading){
+    if(reading||pilot?.active){
       refreshOnResume=true;
-      if(universe&&!exploration?.active)applyFlightCamera(universe.camera);
+      if(universe&&!exploration?.active&&!pilot?.active)applyFlightCamera(universe.camera);
     }else ScrollTrigger.refresh();
   },160);
 },{passive:true});
 canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();cancelAnimationFrame(raf);document.querySelector('.failure').hidden=false;document.querySelector('#failure-message').textContent='图形上下文已中断，请重新载入以恢复航行。';});
 
 const reader=createReader(setReading);
+async function togglePilot(){
+  if(!universe||!exploration||reading||pilotLoading)return;
+  if(pilot?.active){pilot.exit();return;}
+  if(exploration.active){exploration.exit(togglePilot);return;}
+  pilotLoading=true;pilotButton.setAttribute('aria-busy','true');
+  try{
+    if(!pilot){
+      const {createPilot}=await import('./pilot/pilot.js');
+      pilot=createPilot({universe,audio:spaceAudio,reader,button:pilotButton,reducedMotion,routePose:applyFlightCamera,lockFlight,
+        resumeFlight:()=>{resumeFlight();cameraSampled=false;warpStrength=0;}});
+    }
+    if(!reading&&!exploration.active){
+      exploration.projectHotspots(elapsed,false);
+      pilot.enter(flight.progress);
+    }
+  }catch(error){
+    console.error('Pilot initialization:',error);
+    pilotButton.title='驾驶舱未能载入，点击重试';
+  }finally{pilotLoading=false;pilotButton.removeAttribute('aria-busy');}
+}
+pilotButton.addEventListener('click',togglePilot);
 try{
   universe=await createUniverse(canvas,preloader.advance);
   configureScroll();
@@ -208,9 +246,10 @@ try{
   if(import.meta.env.DEV){
     window.__ORBITAL__={
       diagnostics:()=>({...universe.diagnostics(),preloader:preloader.diagnostics(),telemetry,exploration:exploration.diagnostics(),audio:spaceAudio.diagnostics(),progress:flight.progress,gasProgress:gasProgress(flight.progress),cameraPosition:universe.camera.position.toArray(),cameraFov:universe.camera.fov,cameraView:{...universe.camera.view},frameAverage,paused,reading,sceneTime:elapsed,caption:activeChapter,scrollHeight:document.documentElement.scrollHeight,viewportHeight:innerHeight}),
+      pilot:()=>pilot?.diagnostics()??{mode:'idle'},
       seek:progress=>{lenis?.scrollTo(progress*(document.documentElement.scrollHeight-innerHeight),{immediate:true});if(!lenis)window.scrollTo(0,progress*(document.documentElement.scrollHeight-innerHeight));},
     };
   }
 }catch(error){fail(error);}
 
-if(import.meta.hot)import.meta.hot.dispose(()=>{cancelAnimationFrame(raf);reader.dispose();lenis?.destroy();trigger?.kill();exploration?.dispose();spaceAudio.dispose();universe?.dispose();});
+if(import.meta.hot)import.meta.hot.dispose(()=>{cancelAnimationFrame(raf);pilotButton.removeEventListener('click',togglePilot);pilot?.dispose();reader.dispose();lenis?.destroy();trigger?.kill();exploration?.dispose();spaceAudio.dispose();universe?.dispose();});

@@ -3,7 +3,7 @@ import { MathUtils } from 'three';
 export function createSpaceAudio(button){
   let context,master,filter,panner,analyser,enabled=false,suspendTimer,lastUpdate=0,error=null;
   const sources=[];
-  let samples;
+  let samples,engine,engineGain,lastEngineUpdate=0,shieldHits=0;
   const AudioContext=window.AudioContext||window.webkitAudioContext;
   if(!AudioContext){button.disabled=true;button.setAttribute('aria-label','此浏览器不支持空间音效');}
 
@@ -51,7 +51,7 @@ export function createSpaceAudio(button){
       if(enabled){await context.resume();if(!enabled)return;}
       const now=context.currentTime;
       master.gain.cancelScheduledValues(now);master.gain.setTargetAtTime(enabled?.16:0,now,.12);
-      if(!enabled)suspendTimer=setTimeout(()=>{if(!enabled&&context.state==='running')context.suspend();},650);
+      if(!enabled){pilotDrive(null);suspendTimer=setTimeout(()=>{if(!enabled&&context.state==='running')context.suspend();},650);}
     }catch(reason){error=reason.message;enabled=false;reflect();button.setAttribute('aria-label','音频暂不可用，点击重试');}
   }
   const toggle=()=>setEnabled(!enabled);
@@ -68,6 +68,36 @@ export function createSpaceAudio(button){
     const azimuth=Math.atan2(cameraPosition.x,cameraPosition.z);
     panner.pan.setTargetAtTime(Math.sin(azimuth)*.35+Math.sin(elapsed*.08)*.12,lastUpdate,.35);
   }
+  function pilotDrive(load){
+    if(load===null){
+      if(!engine)return;
+      const now=context.currentTime;
+      engineGain.gain.setTargetAtTime(0,now,.035);engine.stop(now+.18);
+      engine=null;engineGain=null;return;
+    }
+    if(!enabled||context?.state!=='running')return;
+    const now=context.currentTime;
+    if(!engine){
+      const source=context.createOscillator(),gain=context.createGain();
+      source.type='triangle';source.frequency.value=32;gain.gain.value=0;
+      source.connect(gain);gain.connect(master);source.start();
+      source.onended=()=>{source.disconnect();gain.disconnect();};
+      engine=source;engineGain=gain;lastEngineUpdate=-1;
+    }
+    if(now-lastEngineUpdate<.055)return;
+    lastEngineUpdate=now;
+    engine.frequency.setTargetAtTime(32+load*68,now,.14);
+    engineGain.gain.setTargetAtTime(.10+load*.26,now,.11);
+  }
+  function shieldImpact(){
+    if(!enabled||context?.state!=='running')return;
+    const now=context.currentTime,source=context.createOscillator(),gain=context.createGain();
+    source.frequency.setValueAtTime(116,now);source.frequency.exponentialRampToValueAtTime(29,now+.29);
+    gain.gain.setValueAtTime(.001,now);gain.gain.exponentialRampToValueAtTime(.72,now+.012);
+    gain.gain.exponentialRampToValueAtTime(.001,now+.36);
+    source.connect(gain);gain.connect(master);source.onended=()=>{source.disconnect();gain.disconnect();};
+    source.start(now);source.stop(now+.38);shieldHits++;
+  }
   function diagnostics(){
     let rms=0,peak=0;
     if(analyser&&context.state==='running'){
@@ -75,8 +105,8 @@ export function createSpaceAudio(button){
       for(const sample of samples){rms+=sample*sample;peak=Math.max(peak,Math.abs(sample));}
       rms=Math.sqrt(rms/samples.length);
     }
-    return {created:!!context,enabled,state:context?.state||'uninitialized',gain:master?.gain.value||0,frequency:filter?.frequency.value||160,rms,peak,error,sources:sources.length};
+    return {created:!!context,enabled,state:context?.state||'uninitialized',gain:master?.gain.value||0,frequency:filter?.frequency.value||160,rms,peak,error,sources:sources.length,engineHz:engine?.frequency.value||0,shieldHits};
   }
-  function dispose(){clearTimeout(suspendTimer);button.removeEventListener('click',toggle);document.removeEventListener('visibilitychange',visibility);sources.forEach(source=>source.stop());context?.close();}
-  return {update,diagnostics,dispose};
+  function dispose(){pilotDrive(null);clearTimeout(suspendTimer);button.removeEventListener('click',toggle);document.removeEventListener('visibilitychange',visibility);sources.forEach(source=>source.stop());context?.close();}
+  return {update,pilotDrive,shieldImpact,diagnostics,dispose};
 }

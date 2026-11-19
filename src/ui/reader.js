@@ -170,6 +170,17 @@ export function createReader(onReadingChange) {
     }
   }
 
+  function open(hash, returnFocus) {
+    if (!routeFrom(hash)) return;
+    const wasOpen = dialog.open;
+    if (hash !== location.hash) {
+      const depth = (history.state?.orbitalReaderDepth || 0) + 1;
+      history.pushState({ ...history.state, orbitalReaderDepth: depth }, '', hash);
+    }
+    sync();
+    if (!wasOpen && dialog.open && returnFocus?.isConnected) opener = returnFocus;
+  }
+
   // A direct article link also has a local return destination for the close button.
   if (routeFrom(location.hash) && !history.state?.orbitalReaderDepth) {
     const entry = location.href;
@@ -181,11 +192,7 @@ export function createReader(onReadingChange) {
     const link = event.target.closest?.('a[href^="#"]');
     if (!link || !routeFrom(link.hash) || link.target === '_blank') return;
     event.preventDefault();
-    if (link.hash !== location.hash) {
-      const depth = (history.state?.orbitalReaderDepth || 0) + 1;
-      history.pushState({ ...history.state, orbitalReaderDepth: depth }, '', link.hash);
-    }
-    sync();
+    open(link.hash);
   });
   listen(window, 'popstate', sync);
   listen(window, 'hashchange', sync);
@@ -201,5 +208,5 @@ export function createReader(onReadingChange) {
     if (event.target === dialog && event.clientX < dialog.getBoundingClientRect().left) dismiss();
   });
   sync();
-  return { dispose: () => events.abort() };
+  return { open, dispose: () => events.abort() };
 }
