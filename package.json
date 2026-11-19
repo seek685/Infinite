@@ -12,7 +12,8 @@
     "verify:exploration": "node scripts/verify-exploration.mjs",
     "verify:delivery": "node scripts/verify-delivery.mjs",
     "verify:reader": "node scripts/verify-reader.mjs",
-    "verify:pilot": "node scripts/verify-pilot.mjs"
+    "verify:pilot": "node scripts/verify-pilot.mjs",
+    "verify:models": "node scripts/verify-models.mjs"
   },
   "dependencies": {
     "dompurify": "3.4.18",

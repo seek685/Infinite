@@ -65,7 +65,20 @@ anchor: division
 
 飞入青色对接圈后，按 F 或点按对接提示进入造物展厅。靠近八面体信标时按 F 扫描并阅读对应日志。关闭抽屉会继续驾驶，从空间站离港时机头会对准第一篇日志。EXIT PILOT 或 Esc 返回出发时的章节。驾驶音效跟随 SOUND 开关。
 
-程序飞船可用自备模型替换。将文件放入 `public/models/ship.glb`，重启开发服务器或重新构建，Vite 会自动识别。模型使用 +Y 向上、−Z 向前，载入后机身自动居中并缩放到原艇长度，推进器和翼尖特效使用原艇挂点。
+### 接入驾驶模型
+
+将自备模型放入 `public/models/ship.glb` 和 `public/models/station.glb`。可单独替换任意一个。重启 Vite 或重新构建后，首次进入驾驶模式会并行加载已有文件。加载期间和失败时使用对应的程序化模型。Draco 解码器位于同源的 `/draco/`。模型自带的动画会循环播放，金属与玻璃共用驾驶场景的冷色环境反射。
+
+飞船采用 +Y 向上、−Z 向前，自动居中并等比缩放到原艇长度。若模型缺少可识别船首的挂点，可以在 `src/pilot/model-config.js` 调整 `SHIP_ROTATION_OFFSET`，例如将 Y 轴角度设为 `Math.PI` 翻转船首。空间站按最长边归一化。
+
+可在建模工具中导出以下命名的空节点。节点可挂在动画骨骼或活动部件上。
+
+| 节点 | 放置方式 |
+| --- | --- |
+| `Thruster_L`、`Thruster_R` | 位于左右喷口中心，节点局部 +Z 指向尾焰喷出方向。缺少的喷口使用配置中的 `THRUSTER_OFFSETS`。 |
+| `Wingtip_L`、`Wingtip_R` | 位于翼尖航迹的起点。无节点时可调整 `WINGTIP_OFFSETS`。 |
+| `Nose` | 位于船首扫描光束发射点，也用于识别船首朝向。 |
+| `DockingPort` | 位于空间站实体对接口中心，局部 +Z 向舱外。青色引导圈位于其正前方。无节点时使用模型正面包围盒中心。 |
 
 - Vite + Three.js + GSAP ScrollTrigger + Lenis，依赖版本由 `package-lock.json` 固定。
 - 页面总高度 800vh，`scrub: 1.8` 驱动八幕航行。前五幕继续使用原有的球面坐标路径，实际滚动距离与镜头映射保持一致；后三幕接续超光速跃迁、黑洞近观与最终远眺。
@@ -86,6 +99,7 @@ anchor: division
 ```powershell
 npm test
 npm run build
+npm run verify:models
 # 保持开发服务器运行，再在另一个终端执行：
 npm run verify:browser
 npm run verify:exploration
@@ -97,6 +111,8 @@ npm run verify:pilot
 浏览器验证使用本机 Chrome / Edge；其他路径可通过 `BROWSER_PATH` 指定。检查桌面、320 / 390 / 767 像素竖屏、手机横屏和减少动态效果模式的 48 个镜头，包括 GLSL 链接状态、WebGL 错误、控制台、资源请求、导航按钮、鼠标视差、滚动与字幕边界。报告及截图保存在 `.qa/`。
 
 `verify:delivery` 检查首屏遮罩、WebGL 首帧、分享信息、原生触屏滑动及横竖屏切换。`verify:reader` 检查分类、文章直达、阅读滚动隔离、项目缩略图与航线恢复。这两项均支持通过 `PREVIEW_URL` 检查生产预览。`verify:browser` 与 `verify:exploration` 使用开发模式诊断接口。
+
+`verify:models` 在临时生产构建中载入一份自制的 Draco 动画网格，检查同源解码、反射、挂点、独立回退，以及对接和阅读流程。正式模型目录由站主提供素材。
 
 `npm run preview` 可在 http://127.0.0.1:4173/ 预览生产构建。
 

@@ -215,5 +215,5 @@ export async function createUniverse(canvas,onProgress=()=>{}) {
     scene.traverse(object=>{if(object.geometry)object.geometry.dispose();if(object.material){for(const material of [object.material].flat())material.dispose();}});
     composer.passes.forEach(pass=>pass.dispose?.());immersion.dispose();composer.dispose();renderer.dispose();
   }
-  return {scene,camera,anchors:{planet,rings,rocks},render,resize,reduceResolution,diagnostics,dispose};
+  return {scene,camera,renderer,anchors:{planet,rings,rocks},render,resize,reduceResolution,diagnostics,dispose};
 }

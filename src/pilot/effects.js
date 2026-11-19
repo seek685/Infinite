@@ -31,8 +31,10 @@ function dynamicGeometry(count, colored=false) {
   return g;
 }
 
-export function createEffects(ship) {
+export function createEffects(ship,mounts) {
   const group=new T.Group(), head=new T.Vector3(), end=new T.Vector3();
+  const shipInverse=new T.Matrix4(), relative=new T.Matrix4(), nozzles=[new T.Matrix4(),new T.Matrix4()];
+  const particle=new T.Vector3();
   const jets=dynamicGeometry(88,true);
   const canvas=document.createElement('canvas'); canvas.width=canvas.height=32;
   const ctx=canvas.getContext('2d'), gradient=ctx.createRadialGradient(16,16,0,16,16,16);
@@ -62,11 +64,19 @@ export function createEffects(ship) {
   beam.frustumCulled=false; beam.visible=pulse.visible=false; group.add(beam,pulse);
   function update(dt,state) {
     const power=state.power, speed=state.velocity.length();
+    ship.updateWorldMatrix(true,false);
+    shipInverse.copy(ship.matrixWorld).invert();
+    mounts.thrusters.forEach((socket,i)=>{
+      socket.updateWorldMatrix(true,false);
+      relative.multiplyMatrices(shipInverse,socket.matrixWorld);
+      // Follow an animated nozzle's direction, keeping plume length in flight units.
+      nozzles[i].extractRotation(relative).setPosition(particle.setFromMatrixPosition(relative));
+    });
     emissionPhase+=dt*(2.7+power*1.8);
     emission.forEach(({phase,angle,rad},i)=>{
       const age=(phase+emissionPhase)%1, width=(.005+.013*(1-age)) * rad;
-      const x=(i%2?1:-1)*.074 + Math.cos(angle)*width;
-      jets.attributes.position.setXYZ(i,x,.005+Math.sin(angle)*width,.202+age*(.071+power*.26));
+      particle.set(Math.cos(angle)*width,Math.sin(angle)*width,age*(.071+power*.26)).applyMatrix4(nozzles[i%2]);
+      jets.attributes.position.setXYZ(i,particle.x,particle.y,particle.z);
       const light=(1-age)**1.4*(.30+power);
       jets.attributes.color.setXYZ(i,light*.7,light*2.35,light*3.7);
     });
@@ -76,7 +86,7 @@ export function createEffects(ship) {
       trailTick%=1/45; traceCount=Math.min(traceCount+1,trailLength);
       traces.forEach((history,side)=>{
         const latest=history.pop();
-        latest.set(side?.229:-.229,.006,.14).applyQuaternion(ship.quaternion).add(ship.position);
+        mounts.wingtips[side].getWorldPosition(latest);
         history.unshift(latest);
       });
       let n=0;
@@ -105,7 +115,7 @@ export function createEffects(ship) {
   function scan(target, t, camera) {
     beam.visible=pulse.visible=!!target;
     if(!target)return;
-    head.set(0,.015,-.27).applyQuaternion(ship.quaternion).add(ship.position);
+    mounts.nose.getWorldPosition(head);
     end.copy(head).lerp(target.position,Math.min(1,t*4));
     beamGeo.attributes.position.setXYZ(0,head.x,head.y,head.z);
     beamGeo.attributes.position.setXYZ(1,end.x,end.y,end.z);

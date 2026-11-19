@@ -26,3 +26,9 @@ THE SOFTWARE.
 
 Three.js, GSAP, Lenis, Vite, Marked and DOMPurify are distributed under their respective licenses
 included in the installed packages.
+
+## Google Draco
+
+`public/draco/` contains the Draco decoder distributed with Three.js. Copyright
+Google LLC and the Draco authors. Its Apache License, Version 2.0, is included in
+[`public/draco/LICENSE`](public/draco/LICENSE).

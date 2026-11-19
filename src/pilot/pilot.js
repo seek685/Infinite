@@ -5,15 +5,20 @@ import { GAS_END } from '../journey.js';
 import { PLANET_RADIUS } from '../flight.js';
 import { BOOST_SPEED, DOCK, STATION, createFlightState, fly, orient, resolveContact } from './flight.js';
 import { createShip, createStation, createBeacons, disposeModel } from './models.js';
+import { createPilotLighting } from './lighting.js';
+import { createModelAssets } from './model-assets.js';
 import { createEffects, ringDebris } from './effects.js';
 import { createPilotHUD } from './hud.js';
 
 export function createPilot({universe, audio, reader, button, reducedMotion, routePose, lockFlight, resumeFlight}) {
   const {camera, scene, anchors}=universe;
   const world=new Group(), model=createShip(), ship=model.ship, station=createStation(), beacons=createBeacons(posts);
-  const effects=createEffects(ship), {debris,rocks}=ringDebris(anchors.rocks);
+  const effects=createEffects(ship,model.mounts), {debris,rocks}=ringDebris(anchors.rocks);
   world.add(ship,station.station,beacons.group,debris,effects.group);
   station.station.position.copy(STATION); world.visible=false;
+  const lighting=createPilotLighting(universe.renderer,world);
+  lighting.illuminate(model.hull);lighting.illuminate(station.station);
+  const assets=createModelAssets(model,station,lighting);
   const targets=[{id:'station',title:'中继空间站',position:DOCK,range:.43},...beacons.targets];
   const navTargets=[...targets,{id:'planet',title:'气态巨行星',position:new Vector3()}];
   const hud=createPilotHUD(targets,{interact,exit,cycle,acceptsInput:()=>mode==='cruising'&&!suspended});
@@ -163,6 +168,7 @@ export function createPilot({universe, audio, reader, button, reducedMotion, rou
   function update(dt){
     if(suspended||mode==='idle')return;
     clock+=dt;phaseTime+=dt;
+    if(world.visible)assets.update(dt,clock);
     anchors.rings.updateWorldMatrix(true,false);
     debris.matrix.copy(anchors.rings.matrixWorld);debris.matrixWorldNeedsUpdate=true;
     inverseRing.copy(debris.matrix).invert();
@@ -187,6 +193,7 @@ export function createPilot({universe, audio, reader, button, reducedMotion, rou
     else if(mode!=='docked')interactFrame(dt);
     if(mode==='idle')return;
     station.update(clock);beacons.update(clock);effects.update(dt,state);
+    if(world.visible)lighting.update(ship,camera);
     if(!suspended&&['cruising','scanning','docking','releasing'].includes(mode)){
       audio.pilotDrive(Math.min(1,state.velocity.length()/BOOST_SPEED*.74+state.power*.26));
     }
@@ -198,8 +205,8 @@ export function createPilot({universe, audio, reader, button, reducedMotion, rou
   return {enter,exit,update,suspend,get active(){return mode!=='idle';},get progress(){return sceneProgress;},
     diagnostics:()=>({mode,suspended,position:state.position.toArray(),velocity:state.velocity.toArray(),speed:state.velocity.length(),
       yaw:state.yaw,pitch:state.pitch,yawRate:state.yawRate,pitchRate:state.pitchRate,bank:state.bank,boost:state.boost,
-      hits,lastContact,near:nearby?.id??null,selected:navTargets[selected].id,
+      hits,lastContact,near:nearby?.id??null,selected:navTargets[selected].id,models:{...assets.status},
       targets:targets.map(t=>({id:t.id,position:t.position.toArray()})),
       beltRock:rocks[anchors.rocks.count].center.clone().applyMatrix4(debris.matrix).toArray()}),
-    dispose(){audio.pilotDrive(null);model.markDisposed();hud.dispose();world.removeFromParent();disposeModel(world);}};
+    dispose(){audio.pilotDrive(null);assets.dispose();hud.dispose();world.removeFromParent();disposeModel(world);lighting.dispose();}};
 }

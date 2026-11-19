@@ -1,4 +1,5 @@
 import * as T from 'three';
+import { THRUSTER_OFFSETS, WINGTIP_OFFSETS } from './model-config.js';
 
 const metal = (color, roughness = .48, metalness = .55) =>
   new T.MeshStandardMaterial({color, roughness, metalness, emissive:color, emissiveIntensity:.13});
@@ -78,24 +79,13 @@ export function createShip() {
     p.scale.set(.024,.003,.0035);p.rotation.z=-side*.19;
   });
 
-  // The build-time flag lets Vite omit the optional GLTFLoader for a procedural hull.
-  // Keep the engine and wingtip hardpoints on the ship so VFX survive a hull swap.
-  let disposed = false;
-  if (import.meta.env.PILOT_SHIP_GLB) (async () => {
-    const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
-    const { scene } = await new GLTFLoader().loadAsync(import.meta.env.BASE_URL + 'models/ship.glb');
-    if (disposed) { disposeModel(scene); return; }
-    const box = new T.Box3().setFromObject(scene);
-    const length = box.max.z - box.min.z;
-    if (length <= 0) { disposeModel(scene); return; }
-    const replacement = new T.Group();
-    replacement.add(scene);
-    scene.position.sub(box.getCenter(new T.Vector3()));
-    replacement.scale.setScalar(.50 / length);
-    ship.add(replacement);
-    hull.visible = false;
-  })().catch(error => console.warn('Pilot ship model:', error.message));
-  return {ship, markDisposed: () => { disposed = true; }};
+  function mount(position) {
+    const node=new T.Object3D();
+    node.position.copy(position);ship.add(node);return node;
+  }
+  const mounts={thrusters:THRUSTER_OFFSETS.map(mount),wingtips:WINGTIP_OFFSETS.map(mount),
+    nose:mount(new T.Vector3(0,.015,-.27))};
+  return {ship,hull,mounts};
 }
 
 function instances(parent, geometry, material, count, place) {
@@ -111,8 +101,8 @@ function instances(parent, geometry, material, count, place) {
 }
 
 export function createStation() {
-  const station = new T.Group(), wheel = new T.Group();
-  station.add(wheel);
+  const station = new T.Group(), hull = new T.Group(), wheel = new T.Group();
+  station.add(hull);hull.add(wheel);
   const white = metal('#c1bfb0'), alloy = metal('#71818a'), dark = metal('#37414e');
   const brass = metal('#ab8251'), solar = metal('#233d60',.27,.42);
   const cyan = luminous(.24,2.4,2.5), nav = luminous(2.8,.16,.085);
@@ -143,18 +133,18 @@ export function createStation() {
     radial(p,4,row%4+.5,.82+(i%5)*.103,row<4?.083:-.057,.006,.125,.006);
   });
   instances(wheel,cube,nav,4,(p,i)=>radial(p,4,i,.815,.108,.014,.035,.015));
-  const axle = mesh(station,new T.CylinderGeometry(.105,.125,.72,24),alloy);
+  const axle = mesh(hull,new T.CylinderGeometry(.105,.125,.72,24),alloy);
   axle.rotation.x=Math.PI/2;
-  for (const z of [-.34,-.21,.22,.36]) torus(station,.113,.014,z,white);
-  mesh(station,new T.CircleGeometry(.098,24),dark,0,0,.364);
-  torus(station,.077,.005,.366,brass);
-  instances(station,cube,white,8,(p,i)=>radial(p,8,i,.09,.371,.021,.009,.011));
+  for (const z of [-.34,-.21,.22,.36]) torus(hull,.113,.014,z,white);
+  mesh(hull,new T.CircleGeometry(.098,24),dark,0,0,.364);
+  torus(hull,.077,.005,.366,brass);
+  instances(hull,cube,white,8,(p,i)=>radial(p,8,i,.09,.371,.021,.009,.011));
   const gate = torus(station,.315,.004,.74,cyan);
   for (let i=0;i<4;i++) {
     const arc = mesh(station,new T.TorusGeometry(.337,.007,6,12,.42),white,0,0,.74);
     arc.rotation.z=i*Math.PI/2-.21;
   }
-  return {station, update(time) {
+  return {station,hull,gate, update(time) {
     wheel.rotation.z=time*.085;
     nav.color.setRGB(.36+3.1*Math.pow(Math.max(0,Math.cos(time*3.9)),18),.045,.025);
     gate.material.color.setRGB(.25,1.7+.35*Math.sin(time*2),2);
@@ -186,14 +176,19 @@ export function createBeacons(posts) {
 }
 
 export function disposeModel(root) {
-  const resources = new Set();
+  const resources = new Set(),bitmaps=new Set();
   root.traverse(object=>{
     if (object.isInstancedMesh) object.dispose();
+    if (object.isSkinnedMesh) resources.add(object.skeleton);
     if (object.geometry) resources.add(object.geometry);
     for (const material of [object.material].flat()) if (material) {
       resources.add(material);
-      for (const value of Object.values(material)) if (value?.isTexture) resources.add(value);
+      for (const value of Object.values(material)) if (value?.isTexture&&!value.isRenderTargetTexture) {
+        resources.add(value);
+        if(typeof ImageBitmap!=='undefined'&&value.image instanceof ImageBitmap)bitmaps.add(value.image);
+      }
     }
   });
   resources.forEach(resource=>resource.dispose());
+  bitmaps.forEach(bitmap=>bitmap.close());
 }
